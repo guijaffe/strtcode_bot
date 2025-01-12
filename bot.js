@@ -1,214 +1,535 @@
-// Подключение переменных окружения
-require('dotenv').config();
-const { Bot, Keyboard, InlineKeyboard } = require("grammy");
+import { Bot, InlineKeyboard } from "grammy";
+import "dotenv/config";
+import fs from "fs";
+import path from "path";
 
 // Инициализация бота
-const bot = new Bot(process.env.BOT_TOKEN); // Используем BOT_TOKEN из .env
-const exchangeRate = parseFloat(process.env.COURSE); // Курс для расчета
-const adminChatId = process.env.ADMIN_CHAT_ID; // Укажите ваш реальный ID
+const bot = new Bot(process.env.BOT_TOKEN);
 
-// Состояние пользователя
-const userState = {};
+// ID администратора
+const adminChatId = process.env.ADMIN_CHAT_ID;
 
-// Таблица цен
-const productPrices = {
-	'Кроссовки': 2000,
-	'Зимняя обувь': 2300,
-	'Худи': 2000,
-	'Зимняя куртка': 2500,
-	'Ветровка': 1900,
-	'Джинсы': 1850,
-	'Сумки маленькие': 2000,
-	'Сумки большие': 2100,
-	'Футболки, шорты, аксессуары': 1800,
-	'Часы, парфюм, украшения': 1800,
+// Хранение состояния пользователей (временное, для примера)
+const userStates = new Map();
+
+// Хранение всех пользователей бота
+const allUsers = new Set();
+
+// Категории товаров и их наценки
+const categories = {
+	"Кроссовки": 2000,
+	"Зимняя обувь": 2300,
+	"Худи": 2000,
+	"Зимняя куртка": 2500,
+	"Ветровка": 1900,
 };
 
-// Главное меню
-const mainMenu = new Keyboard()
-	.text("Инструкция").row()
-	.text("Рассчитать заказ").text("Оформить заказ").row()
-	.text("Связаться с администратором")
-	.resized();
+// Инлайн-клавиатура для связи с администратором
+const contactAdminKeyboard = new InlineKeyboard().text(
+	"Связаться с администратором",
+	"contact_admin"
+);
 
-// Меню расчета
-const calculateMenu = new Keyboard()
-	.text("Кроссовки").text("Зимняя обувь").row()
-	.text("Худи").text("Зимняя куртка").row()
-	.text("Ветровка").row()
-	.text("В начало")
-	.resized();
+// Инлайн-клавиатура для главного меню
+const mainMenuKeyboard = new InlineKeyboard()
+	.text("Рассчитать заказ", "calculate_order")
+	.row()
+	.text("Инструкции", "show_instructions")
+	.row()
+	.text("Связаться с администратором", "contact_admin");
 
-// Хранение чатов
-const userChats = {}; // Храним ID чатов для каждого пользователя с администратором
-const adminUsers = {}; // Храним пользователей, с которыми администратор может общаться
-let selectedUserId = null; // Переменная для хранения выбранного пользователя
+// Инлайн-клавиатура для выбора категории
+const categoryKeyboard = new InlineKeyboard()
+	.text("Кроссовки", "category_sneakers")
+	.row()
+	.text("Зимняя обувь", "category_winter_shoes")
+	.row()
+	.text("Худи", "category_hoodie")
+	.row()
+	.text("Зимняя куртка", "category_winter_jacket")
+	.row()
+	.text("Ветровка", "category_windbreaker")
+	.row()
+	.text("Вернуться в главное меню", "back_to_main_menu");
 
-// Главное меню
+// Инлайн-клавиатура для оформления заказа
+const orderKeyboard = new InlineKeyboard()
+	.text("Оформить заказ", "place_order")
+	.row()
+	.text("Рассчитать еще", "calculate_again")
+	.row()
+	.text("Вернуться в главное меню", "back_to_main_menu");
+
+// Инлайн-клавиатура для инструкций
+const instructionsKeyboard = new InlineKeyboard()
+	.text("На главную", "back_to_main_menu");
+
+// Удаление предыдущих сообщений
+async function deletePreviousMessages(ctx, userId) {
+	const userState = userStates.get(userId);
+	if (userState && userState.previousMessages) {
+		for (const messageId of userState.previousMessages) {
+			try {
+				await ctx.api.deleteMessage(ctx.chat.id, messageId);
+			} catch (error) {
+				console.error("Не удалось удалить сообщение:", error);
+			}
+		}
+		userState.previousMessages = [];
+	}
+}
+
+// Добавление ID сообщения в список для удаления
+function addMessageToDelete(userId, messageId) {
+	if (!userStates.has(userId)) {
+		userStates.set(userId, { previousMessages: [] });
+	}
+	const userState = userStates.get(userId);
+	if (!userState.previousMessages) {
+		userState.previousMessages = [];
+	}
+	userState.previousMessages.push(messageId);
+}
+
+// Обработка команды /start
 bot.command("start", async (ctx) => {
-	userState[ctx.chat.id] = {}; // Сбрасываем состояние
-	await ctx.reply("Привет! Добро пожаловать в бота. Выберите действие:", {
-		reply_markup: mainMenu,
+	const userId = ctx.from.id;
+
+	// Добавляем пользователя в список всех пользователей
+	allUsers.add(userId);
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const sentMessage = await ctx.reply("🏠 Главное меню\n\n" +
+		"Добро пожаловать в бот магазина Secret Code!\n\n" +
+		"Рады видеть тебя здесь! С помощью этого бота ты сможешь:\n" +
+		"✅ Рассчитать стоимость заказа.\n" +
+		"✅ Оформить заказ.\n" +
+		"✅ Связаться с администратором.\n\n" +
+		"Если хочешь узнать больше, нажми «Инструкции».\n\n" +
+		"Выбери действие:", {
+		reply_markup: mainMenuKeyboard,
 	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
 });
 
-// Инструкция
-bot.hears("Инструкция", async (ctx) => {
-	await ctx.reply(
-		"Инструкция:\n1. Выберите 'Рассчитать заказ', чтобы указать товары.\n2. Оформите заказ после расчета.\n3. Следуйте дальнейшим указаниям.",
-		{ reply_markup: mainMenu }
-	);
+// Обработка команды /instructions
+bot.command("instructions", async (ctx) => {
+	await showInstructions(ctx);
 });
 
-// Рассчитать заказ
-bot.hears("Рассчитать заказ", async (ctx) => {
-	userState[ctx.chat.id] = { step: "category" }; // Устанавливаем шаг
-	await ctx.reply("Выберите категорию товара:", { reply_markup: calculateMenu });
+// Показ инструкций
+async function showInstructions(ctx) {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const instructions = `
+	📖 Инструкции по использованию бота:
+
+	1. Для расчета заказа выберите "Рассчитать заказ".
+	2. Выберите категорию товара (например, кроссовки).
+	3. Введите цену товара в юанях.
+	4. Бот рассчитает стоимость заказа.
+	5. Вы можете оформить заказ или вернуться в главное меню.
+
+	Если у вас есть вопросы, свяжитесь с администратором.
+	`;
+
+	const sentMessage = await ctx.reply(instructions, {
+		reply_markup: instructionsKeyboard,
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+}
+
+// Обработка команды /calculate
+bot.command("calculate", async (ctx) => {
+	await showCategorySelection(ctx);
 });
 
-// Выбор категории
-bot.hears(Object.keys(productPrices), async (ctx) => {
-	const product = ctx.message.text;
-	userState[ctx.chat.id] = { product, step: "price" };
+// Показ выбора категории
+async function showCategorySelection(ctx) {
+	const userId = ctx.from.id;
 
-	await ctx.reply(
-		`Вы выбрали "${product}". Теперь введите цену товара (в юанях):`,
-		{ reply_markup: new Keyboard().text("Назад").text("В начало").resized() }
-	);
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const sentMessage = await ctx.reply("Выберите категорию товара:", {
+		reply_markup: categoryKeyboard,
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+}
+
+// Обработка нажатия инлайн-кнопки "Инструкции"
+bot.callbackQuery("show_instructions", async (ctx) => {
+	await showInstructions(ctx);
+	await ctx.answerCallbackQuery();
 });
 
-// Оформить заказ
-bot.hears("Оформить заказ", async (ctx) => {
-	const userId = ctx.chat.id;
-	const state = userState[userId];
+// Обработка нажатия инлайн-кнопки "Рассчитать заказ"
+bot.callbackQuery("calculate_order", async (ctx) => {
+	await showCategorySelection(ctx);
+	await ctx.answerCallbackQuery();
+});
 
-	if (!state || !state.product || !state.price) {
-		return await ctx.reply("Для оформления заказа необходимо сначала рассчитать стоимость.");
-	}
+// Обработка нажатия инлайн-кнопки "Кроссовки"
+bot.callbackQuery("category_sneakers", async (ctx) => {
+	const userId = ctx.from.id;
 
-	try {
-		const message = `Новый заказ от ${ctx.from.first_name} ${
-			ctx.from.last_name || ""
-		} (${ctx.from.username || "Без имени"}):
-      Продукт: ${state.product}
-      Цена в юанях: ${state.price}
-      Итоговая цена: ${(state.price * exchangeRate + productPrices[state.product]).toFixed(2)} руб.`;
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
 
-		await bot.api.sendMessage(adminChatId, message);
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { category: "Кроссовки", step: "awaiting_price" });
 
-		await ctx.reply(
-			"Ваш заказ оформлен. Администратор скоро подключится для подтверждения.",
-			{ reply_markup: mainMenu }
+	const sentMessage = await ctx.reply("Введите цену товара в юанях:");
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Зимняя обувь"
+bot.callbackQuery("category_winter_shoes", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { category: "Зимняя обувь", step: "awaiting_price" });
+
+	const sentMessage = await ctx.reply("Введите цену товара в юанях:");
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Худи"
+bot.callbackQuery("category_hoodie", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { category: "Худи", step: "awaiting_price" });
+
+	const sentMessage = await ctx.reply("Введите цену товара в юанях:");
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Зимняя куртка"
+bot.callbackQuery("category_winter_jacket", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { category: "Зимняя куртка", step: "awaiting_price" });
+
+	const sentMessage = await ctx.reply("Введите цену товара в юанях:");
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Ветровка"
+bot.callbackQuery("category_windbreaker", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { category: "Ветровка", step: "awaiting_price" });
+
+	const sentMessage = await ctx.reply("Введите цену товара в юанях:");
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Вернуться в главное меню"
+bot.callbackQuery("back_to_main_menu", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const sentMessage = await ctx.reply("🏠 Главное меню:\n" +
+		"\n" +
+		"Выберите действие:", {
+		reply_markup: mainMenuKeyboard,
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Оформить заказ"
+bot.callbackQuery("place_order", async (ctx) => {
+	const userId = ctx.from.id;
+	const userState = userStates.get(userId);
+
+	if (userState && userState.step === "awaiting_order_confirmation") {
+		const { category, price, finalPrice, calculationMessageId } = userState;
+
+		// Удаляем сообщение с расчетом стоимости
+		if (calculationMessageId) {
+			try {
+				await ctx.api.deleteMessage(ctx.chat.id, calculationMessageId);
+			} catch (error) {
+				console.error("Не удалось удалить сообщение с расчетом:", error);
+			}
+		}
+
+		// Формируем сообщение для администратора
+		const userLink = `tg://user?id=${userId}`;
+		const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
+		const adminMessage = `Новый заказ:\n\n` +
+			`Категория: ${category}\n` +
+			`Цена в юанях: ${price}\n` +
+			`Итоговая цена: ${finalPrice} руб.\n` +
+			`Пользователь: <a href="${userLink}">${userName}</a>\n` +
+			`ID пользователя: ${userId}`;
+
+		// Отправляем сообщение администратору
+		const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
+			parse_mode: "HTML",
+		});
+
+		// Сохраняем заказ в файл orders.json
+		saveOrderToFile(userId, category, price, finalPrice);
+
+		// Сохраняем ID сообщения и ID пользователя
+		userStates.set(sentMessage.message_id, userId);
+
+		// Уведомляем пользователя об успешном оформлении заказа
+		const confirmationMessage = await ctx.reply(
+			`✅ Ваш заказ успешно оформлен!\n\n` +
+			`Категория: ${category}\n` +
+			`Итоговая цена: ${finalPrice} руб.\n\n` +
+			`Администратор свяжется с вами в ближайшее время для уточнения деталей.`
 		);
-	} catch (error) {
-		console.error("Ошибка при отправке сообщения администратору: ", error);
-		await ctx.reply("Произошла ошибка при отправке сообщения администратору.");
-	}
-});
 
-// Связаться с администратором
-bot.hears("Связаться с администратором", async (ctx) => {
-	const userId = ctx.chat.id;
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, confirmationMessage.message_id);
 
-	// Создаем новый чат с администратором для каждого пользователя
-	const userChat = await bot.api.sendMessage(adminChatId, `Пользователь ${ctx.from.first_name} ${ctx.from.last_name || ""} (${ctx.from.username || "Без имени"}) хочет связаться с вами.`);
-
-	// Сохраняем ID чата для этого пользователя и его имя
-	userChats[userId] = {
-		chatId: userChat.chat.id,
-		userName: ctx.from.first_name
-	};
-
-	// Добавляем пользователя в список активных пользователей для админа
-	adminUsers[userId] = { userId, userName: ctx.from.first_name };
-
-	await ctx.reply("Ваш запрос отправлен администратору. Ожидайте ответа.");
-});
-
-// Обработка сообщений от админа
-bot.on("message", async (ctx) => {
-	const chatId = ctx.chat.id;
-
-	// Проверка, отправляется ли сообщение администратором
-	if (chatId === parseInt(adminChatId)) {
-		// Проверяем, выбран ли пользователь для ответа
-		if (selectedUserId !== null) {
-			// Если сообщение — это текст
-			if (ctx.message.text) {
-				await bot.api.sendMessage(
-					selectedUserId,
-					`Сообщение от администратора: ${ctx.message.text}`
-				);
-			}
-			// Если сообщение — это стикер
-			if (ctx.message.sticker) {
-				const stickerId = ctx.message.sticker.file_id; // Получаем file_id стикера
-				await bot.api.sendSticker(selectedUserId, stickerId);
-			}
-
-			selectedUserId = null; // Сбрасываем выбор пользователя
-			return await ctx.reply(`Сообщение отправлено пользователю ${ctx.from.first_name || ctx.from.username}.`);
-		}
-
-		// Получаем ID всех пользователей, с которыми администратор может общаться
-		const activeUsers = Object.keys(userChats);
-
-		if (activeUsers.length === 0) {
-			return await ctx.reply("Нет активных пользователей для общения.");
-		}
-
-		// Создаем инлайн клавиатуру для выбора пользователя
-		const userKeyboard = new InlineKeyboard();
-		activeUsers.forEach((userId) => {
-			const userName = adminUsers[userId] ? adminUsers[userId].userName : 'Неизвестно';
-			userKeyboard.text(`Ответить ${userName}`, `Ответить_${userId}`);
+		// Показываем главное меню
+		const menuMessage = await ctx.reply("Выберите действие:", {
+			reply_markup: mainMenuKeyboard,
 		});
 
-		// Отправляем администратору список пользователей для выбора
-		await ctx.reply("Выберите пользователя для ответа:", {
-			reply_markup: userKeyboard,
-		});
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, menuMessage.message_id);
+
+		// Сбрасываем состояние пользователя
+		userStates.delete(userId);
 	} else {
-		// Пересылаем сообщения от пользователей администратору в его чат
-		if (userChats[chatId]) {
-			// Если сообщение — это текст
-			if (ctx.message.text) {
-				await bot.api.sendMessage(
-					userChats[chatId].chatId, // Исправлено: используем chatId, связанный с пользователем
-					`Сообщение от пользователя ${ctx.from.first_name} (${ctx.from.username || "Без имени"}): ${ctx.message.text}`
-				);
-			}
+		await ctx.reply("Ошибка при оформлении заказа. Попробуйте снова.");
+	}
+	await ctx.answerCallbackQuery();
+});
 
-			// Если сообщение — это стикер
-			if (ctx.message.sticker) {
-				const stickerId = ctx.message.sticker.file_id; // Получаем file_id стикера
-				const userName = ctx.from.first_name || ctx.from.username; // Получаем имя отправителя
-				await bot.api.sendMessage(
-					userChats[chatId].chatId,
-					`Стикер от пользователя ${userName}:`
-				);
-				await bot.api.sendSticker(userChats[chatId].chatId, stickerId);
+// Обработка нажатия инлайн-кнопки "Рассчитать еще"
+bot.callbackQuery("calculate_again", async (ctx) => {
+	await showCategorySelection(ctx);
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Связаться с администратором"
+bot.callbackQuery("contact_admin", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { step: "waiting_for_message_to_admin" });
+
+	await ctx.reply("Напишите ваше сообщение администратору:");
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка сообщений от пользователей
+bot.on("message", async (ctx) => {
+	const userId = ctx.from.id;
+	const userState = userStates.get(userId);
+
+	// Если сообщение от администратора
+	if (userId.toString() === adminChatId) {
+		console.log("Администратор отправил сообщение."); // Отладочная информация
+
+		// Проверяем, является ли сообщение ответом на пересланное сообщение
+		if (ctx.message.reply_to_message) {
+			console.log("Это ответ на пересланное сообщение."); // Отладочная информация
+
+			// Получаем ID пользователя из userStates
+			const targetUserId = userStates.get(ctx.message.reply_to_message.message_id);
+
+			if (targetUserId) {
+				console.log(`Администратор ответил пользователю ${targetUserId}.`); // Отладочная информация
+
+				// Отправляем ответ пользователю
+				if (ctx.message.text) {
+					// Если это текстовое сообщение
+					await ctx.api.sendMessage(targetUserId, `Ответ от администратора: ${ctx.message.text}`);
+				} else if (ctx.message.sticker) {
+					// Если это стикер
+					await ctx.api.sendSticker(targetUserId, ctx.message.sticker.file_id);
+				} else {
+					// Если это другой тип сообщения (фото, видео и т.д.)
+					await ctx.api.sendMessage(targetUserId, "Администратор отправил неподдерживаемый тип сообщения.");
+				}
+			} else {
+				console.log("Не удалось определить пользователя для ответа."); // Отладочная информация
 			}
 		} else {
-			await ctx.reply("Вы не связаны с администратором. Нажмите 'Связаться с администратором' для начала общения.");
+			console.log("Это не ответ на пересланное сообщение."); // Отладочная информация
+		}
+	} else {
+		// Добавляем пользователя в список всех пользователей
+		allUsers.add(userId);
+
+		// Проверяем состояние пользователя
+		if (userState && userState.step === "waiting_for_message_to_admin") {
+			// Создаем ссылку на пользователя
+			const userLink = `tg://user?id=${userId}`;
+
+			// Получаем имя пользователя
+			const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
+
+			// Формируем сообщение для администратора
+			let adminMessage = `Новое сообщение от пользователя:\n\n` +
+				`ID пользователя: <code>${userId}</code>\n` +
+				`Ссылка на пользователя: <a href="${userLink}">${userName}</a>\n\n`;
+
+			if (ctx.message.text) {
+				// Если это текстовое сообщение
+				adminMessage += `Сообщение: ${ctx.message.text}`;
+			} else if (ctx.message.sticker) {
+				// Если это стикер
+				adminMessage += `Пользователь отправил стикер.`;
+			} else {
+				// Если это другой тип сообщения (фото, видео и т.д.)
+				adminMessage += `Пользователь отправил неподдерживаемый тип сообщения.`;
+			}
+
+			// Отправляем сообщение администратору
+			const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
+				parse_mode: "HTML", // Включаем HTML-разметку
+			});
+
+			// Если это стикер, пересылаем его администратору
+			if (ctx.message.sticker) {
+				await ctx.api.sendSticker(adminChatId, ctx.message.sticker.file_id);
+			}
+
+			// Сохраняем ID сообщения и ID пользователя
+			userStates.set(sentMessage.message_id, userId);
+
+			console.log(`Сообщение от пользователя ${userId} отправлено администратору.`); // Отладочная информация
+
+			// Уведомляем пользователя
+			await ctx.reply("Ваше сообщение отправлено администратору. Ожидайте ответа.");
+
+			// Сбрасываем состояние пользователя
+			userStates.delete(userId);
+		} else if (userState && userState.step === "awaiting_price") {
+			const price = parseFloat(ctx.message.text);
+
+			if (!isNaN(price) && price > 0) {
+				// Получаем наценку для выбранной категории
+				const markup = categories[userState.category] || 0;
+
+				// Рассчитываем итоговую стоимость
+				const finalPrice = price * process.env.COURSE + markup;
+
+				// Сохраняем данные в состоянии пользователя
+				userState.price = price;
+				userState.finalPrice = finalPrice;
+				userState.step = "awaiting_order_confirmation";
+
+				// Показываем пользователю результат расчета
+				const calculationMessage = await ctx.reply(
+					`Категория: ${userState.category}\n` +
+					`Цена в юанях: ${price}\n` +
+					`Итоговая цена: ${finalPrice} руб.`,
+					{
+						reply_markup: orderKeyboard,
+					}
+				);
+
+				// Сохраняем ID сообщения с расчетом стоимости
+				userState.calculationMessageId = calculationMessage.message_id;
+			} else {
+				await ctx.reply("Пожалуйста, введите корректную цену в юанях.");
+			}
+		} else {
+			// Если пользователь не нажал кнопку, напоминаем ему
+			await ctx.reply("Нажмите кнопку 'Связаться с администратором', чтобы отправить сообщение.", {
+				reply_markup: contactAdminKeyboard,
+			});
 		}
 	}
 });
 
-// Обработка выбора пользователя для ответа
-bot.on("callback_query", async (ctx) => {
-	const callbackData = ctx.callbackQuery.data;
+// Сохранение заказа в файл orders.json
+function saveOrderToFile(userId, category, price, finalPrice) {
+	const order = {
+		userId,
+		category,
+		price,
+		finalPrice,
+		timestamp: new Date().toLocaleString("ru-RU", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		}),
+	};
 
-	if (callbackData.startsWith("Ответить_")) {
-		const userId = callbackData.split("_")[1];
-		const userName = adminUsers[userId] ? adminUsers[userId].userName : 'Неизвестно';
+	const ordersPath = path.resolve("orders.json");
+	let orders = [];
 
-		selectedUserId = userId; // Сохраняем ID выбранного пользователя
-		await ctx.answerCallbackQuery();
-		await ctx.reply(`Вы выбрали пользователя ${userName} для ответа. Напишите ваше сообщение.`);
+	// Чтение существующих заказов
+	if (fs.existsSync(ordersPath)) {
+		orders = JSON.parse(fs.readFileSync(ordersPath, "utf-8"));
 	}
+
+	// Добавление нового заказа
+	orders.push(order);
+
+	// Сохранение обновленного списка заказов
+	fs.writeFileSync(ordersPath, JSON.stringify(orders, null, 2));
+}
+
+// Обработка ошибок
+bot.catch((err) => {
+	console.error("Ошибка в боте:", err);
 });
 
 // Запуск бота
 bot.start();
-console.log("Бот запущен!");

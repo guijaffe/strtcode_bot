@@ -1,0 +1,44 @@
+[
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 55,
+    "finalPrice": 2825,
+    "timestamp": "12 января 2025 г. в 02:58:09"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 44,
+    "finalPrice": 3160,
+    "timestamp": "12 января 2025 г. в 03:00:10"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 433,
+    "finalPrice": 8495,
+    "timestamp": "12 января 2025 г. в 03:03:28"
+  },
+  {
+    "userId": 6969676090,
+    "category": "sneakers",
+    "price": 555,
+    "finalPrice": 8325,
+    "timestamp": "12 января 2025 г. в 03:08:38"
+  },
+  {
+    "userId": 6969676090,
+    "category": "hoodie",
+    "price": 44,
+    "finalPrice": 660,
+    "timestamp": "12 января 2025 г. в 03:10:57"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя обувь",
+    "price": 556,
+    "finalPrice": 10640,
+    "timestamp": "12 января 2025 г. в 03:11:59"
+  }
+]
