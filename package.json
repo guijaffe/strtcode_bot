@@ -10,6 +10,7 @@
   "private": true,
   "dependencies": {
     "dotenv": "^16.4.7",
-    "grammy": "^1.33.0"
+    "grammy": "^1.33.0",
+    "node-cron": "^3.0.3"
   }
 }

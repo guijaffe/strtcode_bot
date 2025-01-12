@@ -59,5 +59,45 @@
     "price": 555,
     "finalPrice": 10325,
     "timestamp": "12 января 2025 г. в 23:02:15"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3325,
+    "productLink": "https://dw4.co/t/A/1rLAhqUJ8",
+    "size": "55",
+    "article": "5457",
+    "timestamp": "12 января 2025 г. в 23:14:22"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 444,
+    "finalPrice": 9160,
+    "productLink": "https://dw4.co/t/A/1rL99DFOT",
+    "size": "44",
+    "article": "65457",
+    "timestamp": "12 января 2025 г. в 23:19:59"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Кроссовки",
+    "price": 55,
+    "finalPrice": 2825,
+    "productLink": "https://dw4.co/t/A/1rLAKpzbX",
+    "size": "Did",
+    "article": "Gg",
+    "timestamp": "12 января 2025 г. в 23:25:57"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 65,
+    "finalPrice": 3475,
+    "productLink": "https://dw4.co/t/A/1rLAKvDbY",
+    "size": "44",
+    "article": "55",
+    "timestamp": "12 января 2025 г. в 23:30:57"
   }
 ]

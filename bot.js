@@ -54,7 +54,7 @@ const categoryKeyboard = new InlineKeyboard()
 
 // Инлайн-клавиатура для оформления заказа
 const orderKeyboard = new InlineKeyboard()
-	.text("Оформить заказ", "place_order")
+	.text("Начать оформление заказа", "start_order")
 	.row()
 	.text("Рассчитать еще", "calculate_again")
 	.row()
@@ -116,7 +116,6 @@ bot.command("start", async (ctx) => {
 	addMessageToDelete(userId, sentMessage.message_id);
 });
 
-
 // Команда /broadcast
 bot.command("broadcast", async (ctx) => {
 	console.log("Команда /broadcast вызвана");
@@ -166,16 +165,16 @@ async function showInstructions(ctx) {
 	await deletePreviousMessages(ctx, userId);
 
 	const instructions = `
-	📖 Инструкции по использованию бота:
+  📖 Инструкции по использованию бота:
 
-	1. Для расчета заказа выберите "Рассчитать заказ".
-	2. Выберите категорию товара (например, кроссовки).
-	3. Введите цену товара в юанях.
-	4. Бот рассчитает стоимость заказа.
-	5. Вы можете оформить заказ или вернуться в главное меню.
+  1. Для расчета заказа выберите "Рассчитать заказ".
+  2. Выберите категорию товара (например, кроссовки).
+  3. Введите цену товара в юанях.
+  4. Бот рассчитает стоимость заказа.
+  5. Вы можете оформить заказ или вернуться в главное меню.
 
-	Если у вас есть вопросы, свяжитесь с администратором.
-	`;
+  Если у вас есть вопросы, свяжитесь с администратором.
+  `;
 
 	const sentMessage = await ctx.reply(instructions, {
 		reply_markup: instructionsKeyboard,
@@ -326,88 +325,23 @@ bot.callbackQuery("back_to_main_menu", async (ctx) => {
 	await ctx.answerCallbackQuery();
 });
 
-// Обработка нажатия инлайн-кнопки "Оформить заказ"
-bot.callbackQuery("place_order", async (ctx) => {
+// Обработка нажатия инлайн-кнопки "Начать оформление заказа"
+bot.callbackQuery("start_order", async (ctx) => {
 	const userId = ctx.from.id;
 	const userState = userStates.get(userId);
 
 	if (userState && userState.step === "awaiting_order_confirmation") {
-		const { category, price, finalPrice, calculationMessageId } = userState;
+		// Устанавливаем состояние пользователя
+		userState.step = "awaiting_product_link";
 
-		// Удаляем сообщение с расчетом стоимости
-		if (calculationMessageId) {
-			try {
-				await ctx.api.deleteMessage(ctx.chat.id, calculationMessageId);
-			} catch (error) {
-				console.error("Не удалось удалить сообщение с расчетом:", error);
-			}
-		}
-
-		// Формируем сообщение для администратора
-		const userLink = `tg://user?id=${userId}`;
-		const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
-		const adminMessage = `Новый заказ:\n\n` +
-			`Категория: ${category}\n` +
-			`Цена в юанях: ${price}\n` +
-			`Итоговая цена: ${finalPrice} руб.\n` +
-			`Пользователь: <a href="${userLink}">${userName}</a>\n` +
-			`ID пользователя: ${userId}`;
-
-		// Отправляем сообщение администратору
-		const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
-			parse_mode: "HTML",
-		});
-
-		// Сохраняем заказ в файл orders.json
-		saveOrderToFile(userId, category, price, finalPrice);
-
-		// Сохраняем ID сообщения и ID пользователя
-		userStates.set(sentMessage.message_id, userId);
-
-		// Уведомляем пользователя об успешном оформлении заказа
-		const confirmationMessage = await ctx.reply(
-			`✅ Ваш заказ успешно оформлен!\n\n` +
-			`Категория: ${category}\n` +
-			`Итоговая цена: ${finalPrice} руб.\n\n` +
-			`Администратор свяжется с вами в ближайшее время для уточнения деталей.`
-		);
-
-		// Сохраняем ID сообщения для удаления
-		addMessageToDelete(userId, confirmationMessage.message_id);
-
-		// Показываем главное меню
-		const menuMessage = await ctx.reply("🏠 Главное меню\n\n" +
-			"Спасибо за заказ! Может ещё что-нибудь?\n\n" +
-			"Добро пожаловать в бот магазина Secret Code, рады видеть тебя в главном меню снова!\n\n" +
-			"Выбери действие:", {
-			reply_markup: mainMenuKeyboard,
+		// Отправляем сообщение с запросом ссылки на товар
+		const sentMessage = await ctx.reply("Пожалуйста, скиньте ссылку на интересующий товар. Ссылка должна быть с сайта Poizon (dw4.co).", {
+			reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
 		});
 
 		// Сохраняем ID сообщения для удаления
-		addMessageToDelete(userId, menuMessage.message_id);
-
-		// Сбрасываем состояние пользователя
-		userStates.delete(userId);
-	} else {
-		await ctx.reply("Ошибка при оформлении заказа. Попробуйте снова.");
+		addMessageToDelete(userId, sentMessage.message_id);
 	}
-	await ctx.answerCallbackQuery();
-});
-
-// Обработка нажатия инлайн-кнопки "Рассчитать еще"
-bot.callbackQuery("calculate_again", async (ctx) => {
-	await showCategorySelection(ctx);
-	await ctx.answerCallbackQuery();
-});
-
-// Обработка нажатия инлайн-кнопки "Связаться с администратором"
-bot.callbackQuery("contact_admin", async (ctx) => {
-	const userId = ctx.from.id;
-
-	// Устанавливаем состояние пользователя
-	userStates.set(userId, { step: "waiting_for_message_to_admin" });
-
-	await ctx.reply("Напишите ваше сообщение администратору:");
 	await ctx.answerCallbackQuery();
 });
 
@@ -452,49 +386,63 @@ bot.on("message", async (ctx) => {
 		allUsers.add(userId);
 
 		// Проверяем состояние пользователя
-		if (userState && userState.step === "waiting_for_message_to_admin") {
-			// Создаем ссылку на пользователя
-			const userLink = `tg://user?id=${userId}`;
+		if (userState && userState.step === "awaiting_product_link") {
+			// Проверяем, является ли сообщение ссылкой
+			const urlPattern = /https?:\/\/[^\s]+/;
+			const match = ctx.message.text.match(urlPattern);
 
-			// Получаем имя пользователя
-			const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
+			if (match && match[0].includes("dw4.co")) {
+				// Сохраняем ссылку на товар
+				userState.productLink = match[0];
+				userState.step = "awaiting_size";
 
-			// Формируем сообщение для администратора
-			let adminMessage = `Новое сообщение от пользователя:\n\n` +
-				`ID пользователя: <code>${userId}</code>\n` +
-				`Ссылка на пользователя: <a href="${userLink}">${userName}</a>\n\n`;
+				// Отправляем сообщение с запросом размера
+				const sentMessage = await ctx.reply("Спасибо! Теперь укажите размер товара (проверьте внимательно размер).", {
+					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
+				});
 
-			if (ctx.message.text) {
-				// Если это текстовое сообщение
-				adminMessage += `Сообщение: ${ctx.message.text}`;
-			} else if (ctx.message.sticker) {
-				// Если это стикер
-				adminMessage += `Пользователь отправил стикер.`;
+				// Сохраняем ID сообщения для удаления
+				addMessageToDelete(userId, sentMessage.message_id);
 			} else {
-				// Если это другой тип сообщения (фото, видео и т.д.)
-				adminMessage += `Пользователь отправил неподдерживаемый тип сообщения.`;
+				await ctx.reply("Пожалуйста, отправьте корректную ссылку на товар с сайта Poizon (dw4.co).");
 			}
+		} else if (userState && userState.step === "awaiting_size") {
+			// Сохраняем размер товара
+			userState.size = ctx.message.text;
+			userState.step = "awaiting_article";
 
-			// Отправляем сообщение администратору
-			const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
-				parse_mode: "HTML", // Включаем HTML-разметку
+			// Отправляем сообщение с запросом артикула
+			const sentMessage = await ctx.reply("Теперь уточните артикул товара.", {
+				reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
 			});
 
-			// Если это стикер, пересылаем его администратору
-			if (ctx.message.sticker) {
-				await ctx.api.sendSticker(adminChatId, ctx.message.sticker.file_id);
-			}
+			// Сохраняем ID сообщения для удаления
+			addMessageToDelete(userId, sentMessage.message_id);
+		} else if (userState && userState.step === "awaiting_article") {
+			// Сохраняем артикул товара
+			userState.article = ctx.message.text;
+			userState.step = "awaiting_order_confirmation";
 
-			// Сохраняем ID сообщения и ID пользователя
-			userStates.set(sentMessage.message_id, userId);
+			// Отправляем сообщение с подтверждением заказа
+			const sentMessage = await ctx.reply(
+				`Ваш заказ:\n\n` +
+				`Категория: ${userState.category}\n` +
+				`Цена в юанях: ${userState.price}\n` +
+				`Итоговая цена: ${userState.finalPrice} руб.\n` +
+				`Ссылка на товар: ${userState.productLink}\n` +
+				`Размер: ${userState.size}\n` +
+				`Артикул: ${userState.article}\n\n` +
+				`Нажмите "Оформить заказ", чтобы завершить оформление.`,
+				{
+					reply_markup: new InlineKeyboard()
+						.text("Оформить заказ", "place_order")
+						.row()
+						.text("Отмена", "back_to_main_menu"),
+				}
+			);
 
-			console.log(`Сообщение от пользователя ${userId} отправлено администратору.`); // Отладочная информация
-
-			// Уведомляем пользователя
-			await ctx.reply("Ваше сообщение отправлено администратору. Ожидайте ответа.");
-
-			// Сбрасываем состояние пользователя
-			userStates.delete(userId);
+			// Сохраняем ID сообщения для удаления
+			addMessageToDelete(userId, sentMessage.message_id);
 		} else if (userState && userState.step === "awaiting_price") {
 			const price = parseFloat(ctx.message.text);
 
@@ -525,6 +473,9 @@ bot.on("message", async (ctx) => {
 			} else {
 				await ctx.reply("Пожалуйста, введите корректную цену в юанях.");
 			}
+		} else if (userState && userState.step === "waiting_for_message_to_admin") {
+			// Логика для связи с администратором
+			// (оставьте эту часть без изменений)
 		} else {
 			// Если пользователь не нажал кнопку, напоминаем ему
 			await ctx.reply("Нажмите кнопку 'Связаться с администратором', чтобы отправить сообщение.", {
@@ -533,14 +484,97 @@ bot.on("message", async (ctx) => {
 		}
 	}
 });
+// Обработка нажатия инлайн-кнопки "Оформить заказ"
+bot.callbackQuery("place_order", async (ctx) => {
+	const userId = ctx.from.id;
+	const userState = userStates.get(userId);
+
+	if (userState && userState.step === "awaiting_order_confirmation") {
+		const { category, price, finalPrice, calculationMessageId } = userState;
+
+		// Удаляем сообщение с расчетом стоимости
+		if (calculationMessageId) {
+			try {
+				await ctx.api.deleteMessage(ctx.chat.id, calculationMessageId);
+			} catch (error) {
+				console.error("Не удалось удалить сообщение с расчетом:", error);
+			}
+		}
+
+		// Формируем сообщение для администратора
+		const userLink = `tg://user?id=${userId}`;
+		const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
+		const adminMessage = `Новый заказ:\n\n` +
+			`Категория: ${category}\n` +
+			`Цена в юанях: ${price}\n` +
+			`Итоговая цена: ${finalPrice} руб.\n` +
+			`Пользователь: <a href="${userLink}">${userName}</a>\n` +
+			`ID пользователя: ${userId}`;
+
+		// Отправляем сообщение администратору
+		const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
+			parse_mode: "HTML",
+		});
+
+		// Сохраняем ID сообщения и ID пользователя
+		userStates.set(sentMessage.message_id, userId); // <-- Сохраняем связь
+
+		// Уведомляем пользователя об успешном оформлении заказа
+		const confirmationMessage = await ctx.reply(
+			`✅ Ваш заказ успешно оформлен!\n\n` +
+			`Категория: ${category}\n` +
+			`Итоговая цена: ${finalPrice} руб.\n\n` +
+			`Администратор свяжется с вами в ближайшее время для уточнения деталей.`
+		);
+
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, confirmationMessage.message_id);
+
+		// Показываем главное меню
+		const menuMessage = await ctx.reply("🏠 Главное меню\n\n" +
+			"Спасибо за заказ! Может ещё что-нибудь?\n\n" +
+			"Добро пожаловать в бот магазина Secret Code, рады видеть тебя в главном меню снова!\n\n" +
+			"Выбери действие:", {
+			reply_markup: mainMenuKeyboard,
+		});
+
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, menuMessage.message_id);
+
+		// Сбрасываем состояние пользователя
+		userStates.delete(userId);
+	} else {
+		await ctx.reply("Ошибка при оформлении заказа. Попробуйте снова.");
+	}
+	await ctx.answerCallbackQuery();
+});
+// Обработка нажатия инлайн-кнопки "Рассчитать еще"
+bot.callbackQuery("calculate_again", async (ctx) => {
+	await showCategorySelection(ctx);
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Связаться с администратором"
+bot.callbackQuery("contact_admin", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Устанавливаем состояние пользователя
+	userStates.set(userId, { step: "waiting_for_message_to_admin" });
+
+	await ctx.reply("Напишите ваше сообщение администратору:");
+	await ctx.answerCallbackQuery();
+});
 
 // Сохранение заказа в файл orders.json
-function saveOrderToFile(userId, category, price, finalPrice) {
+function saveOrderToFile(userId, category, price, finalPrice, productLink, size, article) {
 	const order = {
 		userId,
 		category,
 		price,
 		finalPrice,
+		productLink,
+		size,
+		article,
 		timestamp: new Date().toLocaleString("ru-RU", {
 			year: "numeric",
 			month: "long",
