@@ -339,7 +339,10 @@ bot.callbackQuery("place_order", async (ctx) => {
 		addMessageToDelete(userId, confirmationMessage.message_id);
 
 		// Показываем главное меню
-		const menuMessage = await ctx.reply("Выберите действие:", {
+		const menuMessage = await ctx.reply("🏠 Главное меню\n\n" +
+			"Спасибо за заказ! Может ещё что-нибудь?\n\n" +
+			"Добро пожаловать в бот магазина Secret Code, рады видеть тебя в главном меню снова!\n\n" +
+			"Выбери действие:", {
 			reply_markup: mainMenuKeyboard,
 		});
 

@@ -40,5 +40,89 @@
     "price": 556,
     "finalPrice": 10640,
     "timestamp": "12 января 2025 г. в 03:11:59"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя обувь",
+    "price": 555,
+    "finalPrice": 10625,
+    "timestamp": "12 января 2025 г. в 03:19:20"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя обувь",
+    "price": 555,
+    "finalPrice": 10625,
+    "timestamp": "12 января 2025 г. в 03:22:14"
+  },
+  {
+    "userId": 6969676090,
+    "category": "hoodie",
+    "price": 55,
+    "finalPrice": 825,
+    "timestamp": "12 января 2025 г. в 03:24:09"
+  },
+  {
+    "userId": 6969676090,
+    "category": "sneakers",
+    "price": 44,
+    "finalPrice": 660,
+    "timestamp": "12 января 2025 г. в 03:24:37"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя обувь",
+    "price": 555,
+    "finalPrice": 10625,
+    "timestamp": "12 января 2025 г. в 03:25:56"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Кроссовки",
+    "price": 555,
+    "finalPrice": 10325,
+    "timestamp": "12 января 2025 г. в 03:26:31"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 444,
+    "finalPrice": 8660,
+    "timestamp": "12 января 2025 г. в 03:28:33"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3325,
+    "timestamp": "12 января 2025 г. в 03:29:55"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя обувь",
+    "price": 454,
+    "finalPrice": 9110,
+    "timestamp": "12 января 2025 г. в 03:30:52"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Кроссовки",
+    "price": 333,
+    "finalPrice": 6995,
+    "timestamp": "12 января 2025 г. в 03:31:47"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 66,
+    "finalPrice": 3490,
+    "timestamp": "12 января 2025 г. в 03:32:20"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Ветровка",
+    "price": 2223,
+    "finalPrice": 35245,
+    "timestamp": "12 января 2025 г. в 03:33:03"
   }
 ]
