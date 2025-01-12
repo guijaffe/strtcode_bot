@@ -1,2 +1,63 @@
 [
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3325,
+    "timestamp": "12 января 2025 г. в 21:52:37"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3325,
+    "timestamp": "12 января 2025 г. в 21:55:13"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 55,
+    "finalPrice": 2825,
+    "productLink": "776",
+    "size": "777",
+    "article": "776",
+    "timestamp": "12 января 2025 г. в 22:06:27"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3325,
+    "productLink": "https://dw4.co/t/A/1rL8iWSlC",
+    "size": "44",
+    "article": "6654",
+    "timestamp": "12 января 2025 г. в 22:17:22"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Кроссовки",
+    "price": 55,
+    "finalPrice": 2825,
+    "productLink": "https://dw4.co/t/A/",
+    "size": "44",
+    "article": "6446",
+    "timestamp": "12 января 2025 г. в 22:20:23"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 555,
+    "finalPrice": 10325,
+    "productLink": "https://ral1.ru/colors/toyota/model-86/?PAGEN_1=2",
+    "size": "44",
+    "article": "665",
+    "timestamp": "12 января 2025 г. в 22:26:32"
+  },
+  {
+    "userId": 6969676090,
+    "category": "Худи",
+    "price": 555,
+    "finalPrice": 10325,
+    "timestamp": "12 января 2025 г. в 23:02:15"
+  }
 ]
