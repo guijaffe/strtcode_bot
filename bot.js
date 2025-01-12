@@ -15,6 +15,7 @@ const userStates = new Map();
 // Хранение всех пользователей бота
 const allUsers = new Set();
 
+// Категории товаров и их наценки
 const categories = {
 	"Кроссовки": 2000,
 	"Зимняя обувь": 2300,
