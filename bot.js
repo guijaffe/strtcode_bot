@@ -520,9 +520,8 @@ bot.on("message", async (ctx) => {
 			userState.size = ctx.message.text;
 			userState.step = "awaiting_article";
 
-			// Запрашиваем артикул
 			const sentMessage = await ctx.replyWithAnimation(
-				{ source: 'gif/art.gif' },
+				'https://example.com/path/to/video.mp4', // Прямой URL к MP4-видео
 				{
 					caption: "Пожалуйста, введите артикул товара (если не можете найти напишите что угодно):", // Текст сообщения
 					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"), // Клавиатура
