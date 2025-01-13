@@ -355,7 +355,7 @@ bot.callbackQuery("start_order", async (ctx) => {
 
 		// Отправляем сообщение с запросом ссылки на товар
 		const sentMessage = await ctx.reply(
-			"Пожалуйста, скиньте ссылку на интересующий товар. Ссылка должна быть с сайта Poizon (dw4.co).",
+			"Пожалуйста, скиньте ссылку на интересующий товар.",
 			{
 				reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
 			}
@@ -366,6 +366,13 @@ bot.callbackQuery("start_order", async (ctx) => {
 	}
 	await ctx.answerCallbackQuery();
 });
+
+// Функция для извлечения ссылки из текста
+function extractLink(text) {
+	const urlRegex = /https?:\/\/[^\s]+/;
+	const match = text.match(urlRegex);
+	return match ? match[0] : null;
+}
 
 // Обработка сообщений от пользователей
 bot.on("message", async (ctx) => {
@@ -409,8 +416,16 @@ bot.on("message", async (ctx) => {
 
 		// Проверяем состояние пользователя
 		if (userState && userState.step === "waiting_for_message_to_admin") {
-			// Создаем ссылку на пользователя
-			const userLink = `tg://user?id=${userId}`;
+			const username = ctx.from.username; // Получаем username из контекста
+			const firstName = ctx.from.first_name; // Получаем имя пользователя
+			const lastName = ctx.from.last_name; // Получаем фамилию пользователя
+
+			if (username) {
+				console.log(`Username: @${username}`);
+			} else {
+				console.log(`Имя пользователя: ${firstName} ${lastName}`);
+			}
+			const userLink = username ? `https://t.me/${username}` : (userId ? `tg://user?id=${userId}` : null);
 
 			// Получаем имя пользователя
 			const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
@@ -482,10 +497,10 @@ bot.on("message", async (ctx) => {
 				await ctx.reply("Пожалуйста, введите корректную цену в юанях.");
 			}
 		} else if (userState && userState.step === "awaiting_product_link") {
-			// Проверяем, что сообщение содержит ссылку
-			const productLink = ctx.message.text;
+			// Извлекаем ссылку из сообщения
+			const productLink = extractLink(ctx.message.text);
 
-			if (productLink && productLink.startsWith("http")) {
+			if (productLink) {
 				// Сохраняем ссылку на товар
 				userState.productLink = productLink;
 				userState.step = "awaiting_size";
@@ -498,7 +513,7 @@ bot.on("message", async (ctx) => {
 				// Сохраняем ID сообщения для удаления
 				addMessageToDelete(userId, sentMessage.message_id);
 			} else {
-				await ctx.reply("Пожалуйста, отправьте корректную ссылку на товар.");
+				await ctx.reply("Пожалуйста, отправьте корректную ссылку на товар. Ссылка должна быть с мобильной версии сайта Poizon (dw4.co).");
 			}
 		} else if (userState && userState.step === "awaiting_size") {
 			// Сохраняем размер
@@ -506,9 +521,13 @@ bot.on("message", async (ctx) => {
 			userState.step = "awaiting_article";
 
 			// Запрашиваем артикул
-			const sentMessage = await ctx.reply("Пожалуйста, введите артикул товара:", {
-				reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
-			});
+			const sentMessage = await ctx.replyWithAnimation(
+				{ source: 'gif/art.gif' },
+				{
+					caption: "Пожалуйста, введите артикул товара (если не можете найти напишите что угодно):", // Текст сообщения
+					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"), // Клавиатура
+				}
+			);
 
 			// Сохраняем ID сообщения для удаления
 			addMessageToDelete(userId, sentMessage.message_id);
@@ -542,7 +561,6 @@ bot.on("message", async (ctx) => {
 		}
 	}
 });
-
 // Обработка нажатия инлайн-кнопки "Подтвердить заказ"
 bot.callbackQuery("confirm_order", async (ctx) => {
 	const userId = ctx.from.id;
@@ -563,8 +581,9 @@ bot.callbackQuery("confirm_order", async (ctx) => {
 			userState.article
 		);
 
-		// Формируем сообщение для администратора
-		const userLink = `tg://user?id=${userId}`;
+// Формируем сообщение для администратора
+		const username = ctx.from.username;
+		const userLink = username ? `https://t.me/${username}` : (userId ? `tg://user?id=${userId}` : null);
 		const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
 		const adminMessage = `Новый заказ:\n\n` +
 			`Категория: ${userState.category}\n` +
@@ -576,7 +595,7 @@ bot.callbackQuery("confirm_order", async (ctx) => {
 			`Пользователь: <a href="${userLink}">${userName}</a>\n` +
 			`ID пользователя: ${userId}`;
 
-		// Отправляем сообщение администратору
+// Отправляем сообщение администратору
 		const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
 			parse_mode: "HTML",
 		});
