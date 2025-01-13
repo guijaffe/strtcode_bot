@@ -521,7 +521,7 @@ bot.on("message", async (ctx) => {
 			userState.step = "awaiting_article";
 
 			const sentMessage = await ctx.replyWithAnimation(
-				'https://example.com/path/to/video.mp4', // Прямой URL к MP4-видео
+				'https://rawcdn.githack.com/guijaffe/strtcode_bot/efa03c97a76e3d33f57fcda568dbd13d5ae2e0a8/mp4/art.mp4', // Прямой URL к MP4-видео
 				{
 					caption: "Пожалуйста, введите артикул товара (если не можете найти напишите что угодно):", // Текст сообщения
 					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"), // Клавиатура
