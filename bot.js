@@ -185,15 +185,15 @@ bot.command("broadcast", async (ctx) => {
 	let failCount = 0;
 
 	// Рассылка всем пользователям
-	for (const user of allUsers) {
+	for (const [userId, userData] of allUsers) {
 		try {
 			await ctx.api.sendMessage(
-				user,
+				userId, // Передаем только userId
 				`📢 Сообщение от администрации:\n\n${messageText}`
 			);
 			successCount++;
 		} catch (error) {
-			console.error(`Не удалось отправить сообщение пользователю ${user}:`, error);
+			console.error(`Не удалось отправить сообщение пользователю ${userId}:`, error);
 			failCount++;
 		}
 	}
