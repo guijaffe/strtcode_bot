@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Управление заказами</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+	<style>
+        .status {
+            cursor: pointer;
+        }
+        .delete {
+            color: red;
+            cursor: pointer;
+        }
+        .note {
+            width: 200px;
+        }
+        .restore {
+            color: green;
+            cursor: pointer;
+        }
+        .user-data {
+            white-space: nowrap;
+        }
+	</style>
+</head>
+<body>
+<div class="container mt-4">
+	<h1 class="text-center">Управление заказами</h1>
+	<!-- Уведомление о восстановлении -->
+	<div id="restoreNotification" class="alert alert-warning mt-3" style="display: none;">
+		Заказ удалён. Вы можете восстановить его в течение <span id="restoreTimer">5</span> секунд.
+		<button class="btn btn-sm btn-success ms-2" onclick="restoreOrder()">Восстановить</button>
+	</div>
+	<table class="table table-striped table-bordered">
+		<thead>
+		<tr>
+			<th>Данные о пользователе</th>
+			<th>Категория</th>
+			<th>Цена (юани)</th>
+			<th>Итоговая цена (руб)</th>
+			<th>Ссылка на товар</th>
+			<th>Размер</th>
+			<th>Артикул</th>
+			<th>Время</th>
+			<th>Статус</th>
+			<th>Заметка</th>
+			<th>Действия</th>
+		</tr>
+		</thead>
+		<tbody id="ordersTableBody">
+		<!-- Заказы будут загружены сюда -->
+		</tbody>
+	</table>
+</div>
+
+<script>
+	let pendingDeletion = null; // Хранит последний удалённый заказ
+	let restoreTimeout = null; // Таймер для восстановления
+
+	// Функция для загрузки заказов
+	async function loadOrders() {
+		try {
+			const response = await fetch("/orders");
+			if (!response.ok) {
+				throw new Error("Ошибка при загрузке заказов");
+			}
+			const orders = await response.json();
+
+			const tbody = document.querySelector("#ordersTableBody");
+			tbody.innerHTML = "";
+
+			orders.forEach(order => {
+				const row = document.createElement("tr");
+				row.innerHTML = `
+                    <td class="user-data">
+                        <div><strong>ID:</strong> ${order.userId}</div>
+                        ${order.username ? `<div><strong>Юзернейм:</strong> @${order.username}</div>` : ''}
+                        ${order.firstName ? `<div><strong>Имя:</strong> ${order.firstName}</div>` : ''}
+                        ${order.lastName ? `<div><strong>Фамилия:</strong> ${order.lastName}</div>` : ''}
+                        <div><strong>Ссылка:</strong> <a href="tg://user?id=${order.userId}">Написать</a></div>
+                    </td>
+                    <td>${order.category}</td>
+                    <td>${order.price}</td>
+                    <td>${order.finalPrice}</td>
+                    <td><a href="${order.productLink}" target="_blank">Ссылка</a></td>
+                    <td>${order.size}</td>
+                    <td>${order.article}</td>
+                    <td>${order.timestamp}</td>
+                    <td>
+                        <select onchange="updateStatus('${order.userId}', this.value)">
+                            <option value="new" ${order.status === 'new' ? 'selected' : ''}>Новый</option>
+                            <option value="in_progress" ${order.status === 'in_progress' ? 'selected' : ''}>В процессе</option>
+                            <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Завершен</option>
+                        </select>
+                    </td>
+                    <td>
+                        <textarea class="note">${order.note || ''}</textarea>
+                        <button onclick="saveNote('${order.userId}', this.previousElementSibling.value)">Сохранить</button>
+                    </td>
+                    <td>
+                        <button class="delete" onclick="deleteOrder('${order.userId}')">Удалить</button>
+                    </td>
+                `;
+				tbody.appendChild(row);
+			});
+		} catch (error) {
+			console.error("Ошибка при загрузке заказов:", error);
+			alert("Ошибка при загрузке заказов. Проверьте консоль для подробностей.");
+		}
+	}
+
+	// Функция для обновления статуса заказа
+	async function updateStatus(orderId, status) {
+		try {
+			const response = await fetch("/orders/update", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify({ orderId, status })
+			});
+
+			if (response.ok) {
+				loadOrders(); // Перезагружаем список заказов
+			} else {
+				throw new Error("Ошибка при обновлении статуса");
+			}
+		} catch (error) {
+			console.error("Ошибка при обновлении статуса:", error);
+			alert("Ошибка при обновлении статуса. Проверьте консоль для подробностей.");
+		}
+	}
+
+	// Функция для сохранения заметки
+	async function saveNote(orderId, note) {
+		try {
+			const response = await fetch("/orders/add-note", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify({ orderId, note })
+			});
+
+			if (response.ok) {
+				loadOrders(); // Перезагружаем список заказов
+			} else {
+				throw new Error("Ошибка при сохранении заметки");
+			}
+		} catch (error) {
+			console.error("Ошибка при сохранении заметки:", error);
+			alert("Ошибка при сохранении заметки. Проверьте консоль для подробностей.");
+		}
+	}
+
+	// Функция для удаления заказа
+	async function deleteOrder(orderId) {
+		if (confirm("Вы уверены, что хотите удалить этот заказ?")) {
+			try {
+				const response = await fetch("/orders/delete", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json"
+					},
+					body: JSON.stringify({ orderId })
+				});
+
+				if (response.ok) {
+					const data = await response.json();
+					pendingDeletion = data.pendingDeletion; // Сохраняем удалённый заказ
+					loadOrders(); // Перезагружаем список заказов
+
+					// Показываем уведомление
+					showRestoreNotification();
+
+					// Устанавливаем таймер для окончательного удаления через 5 секунд
+					if (restoreTimeout) clearTimeout(restoreTimeout); // Сбрасываем предыдущий таймер
+					restoreTimeout = setTimeout(() => {
+						pendingDeletion = null; // Окончательно удаляем заказ
+						loadOrders(); // Перезагружаем список заказов
+						hideRestoreNotification(); // Скрываем уведомление
+					}, 5000); // 5 секунд
+				} else {
+					throw new Error("Ошибка при удалении заказа");
+				}
+			} catch (error) {
+				console.error("Ошибка при удалении заказа:", error);
+				alert("Ошибка при удалении заказа. Проверьте консоль для подробностей.");
+			}
+		}
+	}
+
+	// Функция для восстановления заказа
+	async function restoreOrder() {
+		try {
+			const response = await fetch("/orders/restore", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+			});
+
+			if (response.ok) {
+				pendingDeletion = null; // Сбрасываем временное хранилище
+				loadOrders(); // Перезагружаем список заказов
+				hideRestoreNotification(); // Скрываем уведомление
+			} else {
+				throw new Error("Ошибка при восстановлении заказа");
+			}
+		} catch (error) {
+			console.error("Ошибка при восстановлении заказа:", error);
+			alert("Ошибка при восстановлении заказа. Проверьте консоль для подробностей.");
+		}
+	}
+
+	// Функция для показа уведомления о восстановлении
+	function showRestoreNotification() {
+		const notification = document.getElementById("restoreNotification");
+		notification.style.display = "block";
+
+		// Обновляем таймер каждую секунду
+		let timeLeft = 5; // 5 секунд
+		const timerElement = document.getElementById("restoreTimer");
+
+		const timerInterval = setInterval(() => {
+			timeLeft--;
+			timerElement.textContent = timeLeft;
+
+			if (timeLeft <= 0) {
+				clearInterval(timerInterval);
+				hideRestoreNotification();
+			}
+		}, 1000);
+	}
+
+	// Функция для скрытия уведомления о восстановлении
+	function hideRestoreNotification() {
+		const notification = document.getElementById("restoreNotification");
+		notification.style.display = "none";
+	}
+
+	// Загружаем заказы при загрузке страницы
+	loadOrders();
+</script>
+</body>
+</html>

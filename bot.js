@@ -318,8 +318,6 @@ bot.callbackQuery("calculate_order", async (ctx) => {
 	await ctx.answerCallbackQuery();
 });
 
-// Остальной код остается без изменений...
-
 // Универсальный обработчик для всех категорий
 bot.callbackQuery(/^category_/, async (ctx) => {
 	const userId = ctx.from.id;
@@ -595,7 +593,8 @@ bot.callbackQuery("confirm_order", async (ctx) => {
 			userState.finalPrice,
 			userState.productLink,
 			userState.size,
-			userState.article
+			userState.article,
+			ctx.from
 		);
 
 		// Формируем сообщение для администратора
@@ -675,9 +674,12 @@ bot.callbackQuery("contact_admin", async (ctx) => {
 });
 
 // Сохранение заказа в файл orders.json
-function saveOrderToFile(userId, category, price, finalPrice, productLink, size, article) {
+function saveOrderToFile(userId, category, price, finalPrice, productLink, size, article, userData) {
 	const order = {
 		userId,
+		username: userData.username || null, // Юзернейм
+		firstName: userData.first_name || null, // Имя
+		lastName: userData.last_name || null, // Фамилия
 		category,
 		price,
 		finalPrice,
@@ -708,7 +710,6 @@ function saveOrderToFile(userId, category, price, finalPrice, productLink, size,
 	// Сохранение обновленного списка заказов
 	fs.writeFileSync(ordersPath, JSON.stringify(orders, null, 2));
 }
-
 // Обработка ошибок
 bot.catch((err) => {
 	console.error("Ошибка в боте:", err);
