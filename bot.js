@@ -12,8 +12,11 @@ const adminChatId = process.env.ADMIN_CHAT_ID;
 // Хранение состояния пользователей
 const userStates = new Map();
 
-// Хранение всех пользователей бота
-const allUsers = new Set();
+// Хранение всех пользователей, нажавших /start
+const allUsers = new Map();
+
+// Хранение сообщений пользователей администратору
+const adminMessages = [];
 
 // Категории товаров и их наценки (комиссии)
 const categories = {
@@ -118,9 +121,24 @@ function addMessageToDelete(userId, messageId) {
 // Обработка команды /start
 bot.command("start", async (ctx) => {
 	const userId = ctx.from.id;
+	const username = ctx.from.username || "Нет юзернейма";
+	const firstName = ctx.from.first_name || "Нет имени";
+	const lastName = ctx.from.last_name || "Нет фамилии";
 
-	// Добавляем пользователя в список всех пользователей
-	allUsers.add(userId);
+	// Сохраняем информацию о пользователе
+	allUsers.set(userId, {
+		username,
+		firstName,
+		lastName,
+		timestamp: new Date().toLocaleString("ru-RU", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		}),
+	});
 
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
@@ -437,14 +455,45 @@ bot.on("message", async (ctx) => {
 		}
 	} else {
 		// Добавляем пользователя в список всех пользователей
-		allUsers.add(userId);
+		const userData = {
+			username: ctx.from.username || null, // Если юзернейма нет, сохраняем null
+			firstName: ctx.from.first_name || null, // Если имени нет, сохраняем null
+			lastName: ctx.from.last_name || null, // Если фамилии нет, сохраняем null
+
+			timestamp: new Date().toLocaleString("ru-RU", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+			}),
+		};
+		allUsers.set(userId, userData); // Используем set вместо add
 
 		// Проверяем состояние пользователя
 		if (userState && userState.step === "waiting_for_message_to_admin") {
 			const username = ctx.from.username;
 			const userLink = username ? `https://t.me/${username}` : `tg://user?id=${userId}`;
 			const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
+			const firstName = ctx.from.first_name || "Нет имени";
+			const lastName = ctx.from.last_name || "Нет фамилии";
 
+			adminMessages.push({
+				userId,
+				username,
+				firstName,
+				lastName,
+				message: ctx.message.text || "Нет текста",
+				timestamp: new Date().toLocaleString("ru-RU", {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					second: "2-digit",
+				}),
+			});
 			// Формируем сообщение для администратора
 			let adminMessage = `Новое сообщение от пользователя:\n\n` +
 				`ID пользователя: <code>${userId}</code>\n` +
@@ -575,7 +624,6 @@ bot.on("message", async (ctx) => {
 		}
 	}
 });
-
 // Обработка нажатия инлайн-кнопки "Подтвердить заказ"
 bot.callbackQuery("confirm_order", async (ctx) => {
 	const userId = ctx.from.id;
@@ -715,5 +763,7 @@ bot.catch((err) => {
 	console.error("Ошибка в боте:", err);
 });
 
+// Экспорт переменных для использования в server.js
+export { allUsers, adminMessages };
 // Запуск бота
 bot.start();

@@ -3,12 +3,13 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { allUsers, adminMessages } from "./bot.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = 3000;
+const port = 11031;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -128,6 +129,80 @@ app.post("/orders/restore", (req, res) => {
 		}
 	} else {
 		res.status(404).json({ success: false, message: "No order to restore" });
+	}
+});
+
+async function loadOrders() {
+	try {
+		const response = await fetch("/orders");
+		if (!response.ok) {
+			throw new Error("Ошибка при загрузке заказов");
+		}
+		const orders = await response.json();
+
+		const tbody = document.querySelector("#ordersTableBody");
+		tbody.innerHTML = "";
+
+		orders.forEach(order => {
+			const row = document.createElement("tr");
+			row.innerHTML = `
+                <td class="user-data">
+                    <div><strong>ID:</strong> ${order.userId}</div>
+                    ${order.username ? `<div><strong>Юзернейм:</strong> @${order.username}</div>` : ''}
+                    ${order.firstName ? `<div><strong>Имя:</strong> ${order.firstName}</div>` : ''}
+                    ${order.lastName ? `<div><strong>Фамилия:</strong> ${order.lastName}</div>` : ''}
+                    <div><strong>Ссылка:</strong> <a href="tg://user?id=${order.userId}">Написать</a></div>
+                </td>
+                <td>${order.category}</td>
+                <td>${order.price}</td>
+                <td>${order.finalPrice}</td>
+                <td><a href="${order.productLink}" target="_blank">Ссылка</a></td>
+                <td>${order.size}</td>
+                <td>${order.article}</td>
+                <td>${order.timestamp}</td>
+                <td>
+                    <select onchange="updateStatus('${order.userId}', this.value)">
+                        <option value="new" ${order.status === 'new' ? 'selected' : ''}>Новый</option>
+                        <option value="in_progress" ${order.status === 'in_progress' ? 'selected' : ''}>В процессе</option>
+                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Завершен</option>
+                    </select>
+                </td>
+                <td>
+                    <textarea class="note">${order.note || ''}</textarea>
+                    <button onclick="saveNote('${order.userId}', this.previousElementSibling.value)">Сохранить</button>
+                </td>
+                <td>
+                    <button class="delete" onclick="deleteOrder('${order.userId}')">Удалить</button>
+                </td>
+            `;
+			tbody.appendChild(row);
+		});
+	} catch (error) {
+		console.error("Ошибка при загрузке заказов:", error);
+		alert("Ошибка при загрузке заказов. Проверьте консоль для подробностей.");
+	}
+}
+
+// Получение всех пользователей, нажавших /start
+app.get("/users", (req, res) => {
+	try {
+		const users = Array.from(allUsers.entries()).map(([userId, userData]) => ({
+			userId,
+			...userData,
+		}));
+		res.json(users);
+	} catch (error) {
+		console.error("Ошибка при чтении данных пользователей:", error);
+		res.status(500).json({ success: false, message: "Ошибка при загрузке данных пользователей" });
+	}
+});
+// Получение всех сообщений администратору
+app.get("/admin-messages", (req, res) => {
+	try {
+		res.json(adminMessages);
+	} catch (error) {
+		console.error("Ошибка при чтении сообщений администратору:", error);
+		res.status(500).json({ success: false, message: "Ошибка при загрузке сообщений администратору" });
 	}
 });
 

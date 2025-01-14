@@ -12,5 +12,44 @@
     "article": "Yyy",
     "timestamp": "14 января 2025 г. в 21:14:19",
     "note": "ыщыщы"
+  },
+  {
+    "userId": 6969676090,
+    "username": "strtcode_admin",
+    "firstName": "Alexander",
+    "lastName": null,
+    "category": "Кроссовки",
+    "price": 66,
+    "finalPrice": 2990,
+    "productLink": "https://dw4.co/t/A/1rLxOJyey",
+    "size": "Yy",
+    "article": "Yy",
+    "timestamp": "14 января 2025 г. в 22:51:37"
+  },
+  {
+    "userId": 6969676090,
+    "username": "strtcode_admin",
+    "firstName": "Alexander",
+    "lastName": null,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3380,
+    "productLink": "https://dw4.co/t/A/1rLxOJyey",
+    "size": "Hh",
+    "article": "Hh",
+    "timestamp": "14 января 2025 г. в 22:58:25"
+  },
+  {
+    "userId": 6969676090,
+    "username": "strtcode_admin",
+    "firstName": "Alexander",
+    "lastName": null,
+    "category": "Зимняя куртка",
+    "price": 55,
+    "finalPrice": 3380,
+    "productLink": "https://dw4.co/t/A/1rLxOJyey",
+    "size": "Yy",
+    "article": "Yy",
+    "timestamp": "14 января 2025 г. в 23:06:00"
   }
 ]
