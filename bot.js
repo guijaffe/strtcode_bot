@@ -80,7 +80,9 @@ async function deletePreviousMessages(ctx, userId) {
 			try {
 				await ctx.api.deleteMessage(ctx.chat.id, messageId);
 			} catch (error) {
-				console.error("Не удалось удалить сообщение:", error);
+				if (error.description !== "Bad Request: message to delete not found") {
+					console.error("Не удалось удалить сообщение:", error);
+				}
 			}
 		}
 		userState.previousMessages = [];
@@ -129,7 +131,6 @@ bot.command("start", async (ctx) => {
 
 // Команда /broadcast
 bot.command("broadcast", async (ctx) => {
-	console.log("Команда /broadcast вызвана");
 	const userId = ctx.from.id.toString();
 
 	// Проверка на администратора
@@ -153,17 +154,13 @@ bot.command("broadcast", async (ctx) => {
 	// Рассылка всем пользователям
 	for (const user of allUsers) {
 		try {
-			console.log(`Попытка отправить сообщение пользователю ${user}`);
 			await ctx.api.sendMessage(
 				user,
 				`📢 Сообщение от администрации:\n\n${messageText}`
 			);
 			successCount++;
 		} catch (error) {
-			console.error(
-				`Не удалось отправить сообщение пользователю ${user}:`,
-				error
-			);
+			console.error(`Не удалось отправить сообщение пользователю ${user}:`, error);
 			failCount++;
 		}
 	}
@@ -171,11 +168,6 @@ bot.command("broadcast", async (ctx) => {
 	await ctx.reply(
 		`✅ Рассылка завершена.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
 	);
-});
-
-// Обработка команды /instructions
-bot.command("instructions", async (ctx) => {
-	await showInstructions(ctx);
 });
 
 // Показ инструкций
@@ -186,16 +178,16 @@ async function showInstructions(ctx) {
 	await deletePreviousMessages(ctx, userId);
 
 	const instructions = `
-  📖 Инструкции по использованию бота:
+📖 Инструкции по использованию бота:
 
-  1. Для расчета заказа выберите "Рассчитать заказ".
-  2. Выберите категорию товара (например, кроссовки).
-  3. Введите цену товара в юанях.
-  4. Бот рассчитает стоимость заказа.
-  5. Вы можете оформить заказ или вернуться в главное меню.
+1. Для расчета заказа выберите "Рассчитать заказ".
+2. Выберите категорию товара (например, кроссовки).
+3. Введите цену товара в юанях.
+4. Бот рассчитает стоимость заказа.
+5. Вы можете оформить заказ или вернуться в главное меню.
 
-  Если у вас есть вопросы, свяжитесь с администратором.
-  `;
+Если у вас есть вопросы, свяжитесь с администратором.
+`;
 
 	const sentMessage = await ctx.reply(instructions, {
 		reply_markup: instructionsKeyboard,
@@ -204,11 +196,6 @@ async function showInstructions(ctx) {
 	// Сохраняем ID сообщения для удаления
 	addMessageToDelete(userId, sentMessage.message_id);
 }
-
-// Обработка команды /calculate
-bot.command("calculate", async (ctx) => {
-	await showCategorySelection(ctx);
-});
 
 // Показ выбора категории
 async function showCategorySelection(ctx) {
@@ -354,9 +341,10 @@ bot.callbackQuery("start_order", async (ctx) => {
 		userState.step = "awaiting_product_link";
 
 		// Отправляем сообщение с запросом ссылки на товар
-		const sentMessage = await ctx.reply(
-			"Пожалуйста, скиньте ссылку на интересующий товар.",
+		const sentMessage = await ctx.replyWithAnimation(
+			"https://rawcdn.githack.com/guijaffe/strtcode_bot/76bebe177c432a9760533294729f278a6a6f7770/mp4/link.mp4",
 			{
+				caption: "Пожалуйста, скиньте ссылку на интересующий товар.",
 				reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
 			}
 		);
@@ -369,7 +357,7 @@ bot.callbackQuery("start_order", async (ctx) => {
 
 // Функция для извлечения ссылки из текста
 function extractLink(text) {
-	const urlRegex = /https?:\/\/[^\s]+/;
+	const urlRegex = /https?:\/\/[^\s]+/g;
 	const match = text.match(urlRegex);
 	return match ? match[0] : null;
 }
@@ -381,34 +369,20 @@ bot.on("message", async (ctx) => {
 
 	// Если сообщение от администратора
 	if (userId.toString() === adminChatId) {
-		console.log("Администратор отправил сообщение."); // Отладочная информация
-
-		// Проверяем, является ли сообщение ответом на пересланное сообщение
-		if (ctx.message.reply_to_message) {
-			console.log("Это ответ на пересланное сообщение."); // Отладочная информация
-
-			// Получаем ID пользователя из userStates
+		if (ctx.message.reply_to_message && ctx.message.reply_to_message.message_id) {
 			const targetUserId = userStates.get(ctx.message.reply_to_message.message_id);
-
 			if (targetUserId) {
-				console.log(`Администратор ответил пользователю ${targetUserId}.`); // Отладочная информация
-
 				// Отправляем ответ пользователю
 				if (ctx.message.text) {
-					// Если это текстовое сообщение
 					await ctx.api.sendMessage(targetUserId, `Ответ от администратора: ${ctx.message.text}`);
 				} else if (ctx.message.sticker) {
-					// Если это стикер
 					await ctx.api.sendSticker(targetUserId, ctx.message.sticker.file_id);
 				} else {
-					// Если это другой тип сообщения (фото, видео и т.д.)
 					await ctx.api.sendMessage(targetUserId, "Администратор отправил неподдерживаемый тип сообщения.");
 				}
 			} else {
-				console.log("Не удалось определить пользователя для ответа."); // Отладочная информация
+				console.log("Не удалось определить пользователя для ответа.");
 			}
-		} else {
-			console.log("Это не ответ на пересланное сообщение."); // Отладочная информация
 		}
 	} else {
 		// Добавляем пользователя в список всех пользователей
@@ -416,18 +390,8 @@ bot.on("message", async (ctx) => {
 
 		// Проверяем состояние пользователя
 		if (userState && userState.step === "waiting_for_message_to_admin") {
-			const username = ctx.from.username; // Получаем username из контекста
-			const firstName = ctx.from.first_name; // Получаем имя пользователя
-			const lastName = ctx.from.last_name; // Получаем фамилию пользователя
-
-			if (username) {
-				console.log(`Username: @${username}`);
-			} else {
-				console.log(`Имя пользователя: ${firstName} ${lastName}`);
-			}
-			const userLink = username ? `https://t.me/${username}` : (userId ? `tg://user?id=${userId}` : null);
-
-			// Получаем имя пользователя
+			const username = ctx.from.username;
+			const userLink = username ? `https://t.me/${username}` : `tg://user?id=${userId}`;
 			const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
 
 			// Формируем сообщение для администратора
@@ -436,19 +400,16 @@ bot.on("message", async (ctx) => {
 				`Ссылка на пользователя: <a href="${userLink}">${userName}</a>\n\n`;
 
 			if (ctx.message.text) {
-				// Если это текстовое сообщение
 				adminMessage += `Сообщение: ${ctx.message.text}`;
 			} else if (ctx.message.sticker) {
-				// Если это стикер
 				adminMessage += `Пользователь отправил стикер.`;
 			} else {
-				// Если это другой тип сообщения (фото, видео и т.д.)
 				adminMessage += `Пользователь отправил неподдерживаемый тип сообщения.`;
 			}
 
 			// Отправляем сообщение администратору
 			const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
-				parse_mode: "HTML", // Включаем HTML-разметку
+				parse_mode: "HTML",
 			});
 
 			// Если это стикер, пересылаем его администратору
@@ -458,8 +419,6 @@ bot.on("message", async (ctx) => {
 
 			// Сохраняем ID сообщения и ID пользователя
 			userStates.set(sentMessage.message_id, userId);
-
-			console.log(`Сообщение от пользователя ${userId} отправлено администратору.`); // Отладочная информация
 
 			// Уведомляем пользователя
 			await ctx.reply("Ваше сообщение отправлено администратору. Ожидайте ответа.");
@@ -506,9 +465,13 @@ bot.on("message", async (ctx) => {
 				userState.step = "awaiting_size";
 
 				// Запрашиваем размер
-				const sentMessage = await ctx.reply("Пожалуйста, введите размер товара:", {
-					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
-				});
+				const sentMessage = await ctx.replyWithAnimation(
+					"https://rawcdn.githack.com/guijaffe/strtcode_bot/76bebe177c432a9760533294729f278a6a6f7770/mp4/size.mp4",
+					{
+						caption: "Пожалуйста, введите размер товара:",
+						reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
+					}
+				);
 
 				// Сохраняем ID сообщения для удаления
 				addMessageToDelete(userId, sentMessage.message_id);
@@ -521,10 +484,10 @@ bot.on("message", async (ctx) => {
 			userState.step = "awaiting_article";
 
 			const sentMessage = await ctx.replyWithAnimation(
-				'https://rawcdn.githack.com/guijaffe/strtcode_bot/efa03c97a76e3d33f57fcda568dbd13d5ae2e0a8/mp4/art.mp4', // Прямой URL к MP4-видео
+				"https://rawcdn.githack.com/guijaffe/strtcode_bot/efa03c97a76e3d33f57fcda568dbd13d5ae2e0a8/mp4/art.mp4",
 				{
-					caption: "Пожалуйста, введите артикул товара (если не можете найти напишите что угодно):", // Текст сообщения
-					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"), // Клавиатура
+					caption: "Пожалуйста, введите артикул товара (если не можете найти напишите что угодно):",
+					reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
 				}
 			);
 
@@ -560,6 +523,7 @@ bot.on("message", async (ctx) => {
 		}
 	}
 });
+
 // Обработка нажатия инлайн-кнопки "Подтвердить заказ"
 bot.callbackQuery("confirm_order", async (ctx) => {
 	const userId = ctx.from.id;
@@ -580,9 +544,9 @@ bot.callbackQuery("confirm_order", async (ctx) => {
 			userState.article
 		);
 
-// Формируем сообщение для администратора
+		// Формируем сообщение для администратора
 		const username = ctx.from.username;
-		const userLink = username ? `https://t.me/${username}` : (userId ? `tg://user?id=${userId}` : null);
+		const userLink = username ? `https://t.me/${username}` : `tg://user?id=${userId}`;
 		const userName = ctx.from.first_name || ctx.from.username || "Пользователь";
 		const adminMessage = `Новый заказ:\n\n` +
 			`Категория: ${userState.category}\n` +
@@ -594,7 +558,7 @@ bot.callbackQuery("confirm_order", async (ctx) => {
 			`Пользователь: <a href="${userLink}">${userName}</a>\n` +
 			`ID пользователя: ${userId}`;
 
-// Отправляем сообщение администратору
+		// Отправляем сообщение администратору
 		const sentMessage = await ctx.api.sendMessage(adminChatId, adminMessage, {
 			parse_mode: "HTML",
 		});
