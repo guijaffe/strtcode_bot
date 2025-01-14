@@ -137,6 +137,7 @@ bot.command("start", async (ctx) => {
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
+			timeZone: "Europe/Moscow"
 		}),
 	});
 
@@ -467,6 +468,7 @@ bot.on("message", async (ctx) => {
 				hour: "2-digit",
 				minute: "2-digit",
 				second: "2-digit",
+				timeZone: "Europe/Moscow"
 			}),
 		};
 		allUsers.set(userId, userData); // Используем set вместо add
@@ -492,6 +494,7 @@ bot.on("message", async (ctx) => {
 					hour: "2-digit",
 					minute: "2-digit",
 					second: "2-digit",
+					timeZone: "Europe/Moscow"
 				}),
 			});
 			// Формируем сообщение для администратора
@@ -741,7 +744,9 @@ function saveOrderToFile(userId, category, price, finalPrice, productLink, size,
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
+			timeZone: "Europe/Moscow"
 		}),
+
 	};
 
 	const ordersPath = path.resolve("orders.json");

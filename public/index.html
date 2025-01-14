@@ -13,7 +13,18 @@
             display: block;
         }
         .nav-item {
-	        cursor: pointer;
+            cursor: pointer;
+        }
+        .restore-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .restore-btn:hover {
+            background-color: #218838;
         }
 	</style>
 </head>
@@ -91,15 +102,47 @@
 	</div>
 </div>
 <script>
-	// Функция для загрузки заказов
+	// Логика для переключения вкладок
+	document.addEventListener("DOMContentLoaded", () => {
+		const tabs = document.querySelectorAll(".nav-item a");
+		const tabContents = document.querySelectorAll(".tab-content");
+
+		tabs.forEach(tab => {
+			tab.addEventListener("click", (e) => {
+				e.preventDefault();
+
+				// Убираем активный класс у всех вкладок и контента
+				tabs.forEach(t => t.classList.remove("active"));
+				tabContents.forEach(tc => tc.classList.remove("active"));
+
+				// Добавляем активный класс текущей вкладке и соответствующему контенту
+				const targetTab = e.target.getAttribute("data-tab");
+				e.target.classList.add("active");
+				document.getElementById(targetTab).classList.add("active");
+
+				// Загрузка данных при переключении вкладок
+				if (targetTab === "orders") {
+					loadOrders();
+				} else if (targetTab === "users") {
+					loadUsers();
+				} else if (targetTab === "admin-messages") {
+					loadAdminMessages();
+				}
+			});
+		});
+
+		// Загружаем заказы при загрузке страницы
+		loadOrders();
+	});
+
+	// Логика для загрузки заказов
+	const deletedOrders = new Map();
+
 	async function loadOrders() {
 		try {
 			const response = await fetch("/orders");
-			if (!response.ok) {
-				throw new Error("Ошибка при загрузке заказов");
-			}
+			if (!response.ok) throw new Error("Ошибка при загрузке заказов");
 			const orders = await response.json();
-
 			const tbody = document.querySelector("#ordersTableBody");
 			tbody.innerHTML = "";
 
@@ -109,8 +152,6 @@
                     <td class="user-data">
                         <div><strong>ID:</strong> ${order.userId}</div>
                         ${order.username ? `<div><strong>Юзернейм:</strong> @${order.username}</div>` : ''}
-                        ${order.firstName ? `<div><strong>Имя:</strong> ${order.firstName}</div>` : ''}
-                        ${order.lastName ? `<div><strong>Фамилия:</strong> ${order.lastName}</div>` : ''}
                         <div><strong>Ссылка:</strong> <a href="tg://user?id=${order.userId}">Написать</a></div>
                     </td>
                     <td>${order.category}</td>
@@ -132,14 +173,103 @@
                         <button onclick="saveNote('${order.userId}', this.previousElementSibling.value)">Сохранить</button>
                     </td>
                     <td>
-                        <button class="delete" onclick="deleteOrder('${order.userId}')">Удалить</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteOrder('${order.userId}', this)">Удалить</button>
                     </td>
                 `;
 				tbody.appendChild(row);
 			});
 		} catch (error) {
 			console.error("Ошибка при загрузке заказов:", error);
-			alert("Ошибка при загрузке заказов. Проверьте консоль для подробностей.");
+		}
+	}
+
+	async function deleteOrder(orderId, button) {
+		const row = button.closest("tr");
+		row.innerHTML = `<td colspan="11" class="text-center">Удалено. Восстановить через <span class="countdown">5</span> секунд. <button class="restore-btn" onclick="restoreOrder('${orderId}', this)">Восстановить</button></td>`;
+		deletedOrders.set(orderId, row);
+
+		let countdown = 5;
+		const countdownElement = row.querySelector(".countdown");
+
+		const interval = setInterval(() => {
+			countdown--;
+			countdownElement.textContent = countdown;
+
+			if (countdown <= 0) {
+				clearInterval(interval);
+				if (deletedOrders.has(orderId)) {
+					deletedOrders.delete(orderId);
+					row.remove();
+				}
+			}
+		}, 1000);
+
+		try {
+			const response = await fetch("/orders/delete", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ orderId }),
+			});
+
+			if (!response.ok) throw new Error("Ошибка при удалении заказа");
+		} catch (error) {
+			console.error("Ошибка при удалении заказа:", error);
+		}
+	}
+
+	async function restoreOrder(orderId, button) {
+		const row = deletedOrders.get(orderId);
+		if (row) {
+			try {
+				const response = await fetch("/orders/restore", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ orderId }),
+				});
+
+				if (!response.ok) throw new Error("Ошибка при восстановлении заказа");
+
+				await loadOrders();
+				deletedOrders.delete(orderId);
+			} catch (error) {
+				console.error("Ошибка при восстановлении заказа:", error);
+			}
+		}
+	}
+
+	async function saveNote(orderId, note) {
+		try {
+			const response = await fetch("/orders/save-note", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ orderId, note }),
+			});
+
+			if (!response.ok) throw new Error("Ошибка при сохранении заметки");
+		} catch (error) {
+			console.error("Ошибка при сохранении заметки:", error);
+		}
+	}
+
+	async function updateStatus(orderId, status) {
+		try {
+			const response = await fetch("/orders/update-status", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ orderId, status }),
+			});
+
+			if (!response.ok) throw new Error("Ошибка при обновлении статуса");
+		} catch (error) {
+			console.error("Ошибка при обновлении статуса:", error);
 		}
 	}
 
@@ -147,11 +277,8 @@
 	async function loadUsers() {
 		try {
 			const response = await fetch("/users");
-			if (!response.ok) {
-				throw new Error("Ошибка при загрузке пользователей");
-			}
+			if (!response.ok) throw new Error("Ошибка при загрузке пользователей");
 			const users = await response.json();
-
 			const tbody = document.querySelector("#usersTableBody");
 			tbody.innerHTML = "";
 
@@ -168,7 +295,6 @@
 			});
 		} catch (error) {
 			console.error("Ошибка при загрузке пользователей:", error);
-			alert("Ошибка при загрузке пользователей. Проверьте консоль для подробностей.");
 		}
 	}
 
@@ -176,11 +302,8 @@
 	async function loadAdminMessages() {
 		try {
 			const response = await fetch("/admin-messages");
-			if (!response.ok) {
-				throw new Error("Ошибка при загрузке сообщений администратору");
-			}
+			if (!response.ok) throw new Error("Ошибка при загрузке сообщений администратору");
 			const messages = await response.json();
-
 			const tbody = document.querySelector("#adminMessagesTableBody");
 			tbody.innerHTML = "";
 
@@ -198,33 +321,8 @@
 			});
 		} catch (error) {
 			console.error("Ошибка при загрузке сообщений администратору:", error);
-			alert("Ошибка при загрузке сообщений администратору. Проверьте консоль для подробностей.");
 		}
 	}
-
-	// Обработка переключения вкладок
-	document.querySelectorAll(".nav-link").forEach(tab => {
-		tab.addEventListener("click", () => {
-			document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
-			document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
-			tab.classList.add("active");
-			document.getElementById(tab.getAttribute("data-tab")).classList.add("active");
-
-			// Загрузка данных при переключении вкладок
-			if (tab.getAttribute("data-tab") === "orders") {
-				loadOrders();
-			} else if (tab.getAttribute("data-tab") === "users") {
-				loadUsers();
-			} else if (tab.getAttribute("data-tab") === "admin-messages") {
-				loadAdminMessages();
-			}
-		});
-	});
-
-	// Загружаем заказы при загрузке страницы
-	document.addEventListener("DOMContentLoaded", () => {
-		loadOrders();
-	});
 </script>
 </body>
 </html>
