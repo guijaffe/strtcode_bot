@@ -102,7 +102,7 @@ async function deletePreviousMessages(ctx, userId) {
 				}
 			}
 		}
-		userState.previousMessages = [];
+		userState.previousMessages = []; // Очищаем список сообщений
 	}
 }
 
@@ -189,7 +189,7 @@ bot.command("broadcast", async (ctx) => {
 		try {
 			await ctx.api.sendMessage(
 				userId, // Передаем только userId
-				`📢 Сообщение от администрации:\n\n${messageText}`
+				`${messageText}`
 			);
 			successCount++;
 		} catch (error) {
@@ -221,7 +221,7 @@ async function showInstructionsMenu(ctx) {
 `;
 
 	const sentMessage = await ctx.reply(instructionsMenu, {
-		reply_mmarkup: instructionsMenuKeyboard,
+		reply_markup: instructionsMenuKeyboard,
 		parse_mode: "Markdown", // Включаем Markdown для форматирования
 	});
 
@@ -545,6 +545,9 @@ bot.on("message", async (ctx) => {
 				userState.finalPrice = finalPrice;
 				userState.step = "awaiting_order_confirmation";
 
+				// Удаляем предыдущие сообщения
+				await deletePreviousMessages(ctx, userId);
+
 				// Показываем пользователю результат расчета
 				const calculationMessage = await ctx.reply(
 					`Категория: ${userState.category}\n` +
@@ -556,7 +559,7 @@ bot.on("message", async (ctx) => {
 				);
 
 				// Сохраняем ID сообщения с расчетом стоимости
-				userState.calculationMessageId = calculationMessage.message_id;
+				addMessageToDelete(userId, calculationMessage.message_id);
 			} else {
 				await ctx.reply("Пожалуйста, введите корректную цену в юанях.");
 			}
@@ -568,6 +571,9 @@ bot.on("message", async (ctx) => {
 				// Сохраняем ссылку на товар
 				userState.productLink = productLink;
 				userState.step = "awaiting_size";
+
+				// Удаляем предыдущие сообщения
+				await deletePreviousMessages(ctx, userId);
 
 				// Запрашиваем размер
 				const sentMessage = await ctx.replyWithAnimation(
@@ -588,6 +594,9 @@ bot.on("message", async (ctx) => {
 			userState.size = ctx.message.text;
 			userState.step = "awaiting_article";
 
+			// Удаляем предыдущие сообщения
+			await deletePreviousMessages(ctx, userId);
+
 			const sentMessage = await ctx.replyWithAnimation(
 				"https://rawcdn.githack.com/guijaffe/strtcode_bot/efa03c97a76e3d33f57fcda568dbd13d5ae2e0a8/mp4/art.mp4",
 				{
@@ -602,6 +611,9 @@ bot.on("message", async (ctx) => {
 			// Сохраняем артикул
 			userState.article = ctx.message.text;
 			userState.step = "awaiting_confirmation";
+
+			// Удаляем предыдущие сообщения
+			await deletePreviousMessages(ctx, userId);
 
 			// Показываем пользователю все данные и запрашиваем подтверждение
 			const confirmationMessage = await ctx.reply(
@@ -628,6 +640,7 @@ bot.on("message", async (ctx) => {
 		}
 	}
 });
+
 // Обработка нажатия инлайн-кнопки "Подтвердить заказ"
 bot.callbackQuery("confirm_order", async (ctx) => {
 	const userId = ctx.from.id;
