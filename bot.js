@@ -570,7 +570,7 @@ bot.on("message", async (ctx) => {
 
 				// Запрашиваем размер
 				const sentMessage = await ctx.replyWithAnimation(
-					"https://rawcdn.githack.com/guijaffe/strtcode_bot/76bebe177c432a9760533294729f278a6a6f7770/mp4/size.mp4",
+					"https://rawcdn.githack.com/guijaffe/strtcode_bot/14dd416b5b421ae2ac31d8c4af1ec678d192b804/mp4/size2.mp4",
 					{
 						caption: "Пожалуйста, введите размер товара:",
 						reply_markup: new InlineKeyboard().text("Отмена", "back_to_main_menu"),
