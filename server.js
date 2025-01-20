@@ -3,7 +3,6 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { allUsers, adminMessages } from "./bot.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,11 +15,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 const ordersPath = path.resolve(__dirname, "orders.json");
+const usersPath = path.resolve(__dirname, "users.json");
+const adminMessagesPath = path.resolve(__dirname, "adminMessages.json");
 
-// Создаём файл, если он отсутствует
-if (!fs.existsSync(ordersPath)) {
-	fs.writeFileSync(ordersPath, "[]"); // Пустой массив заказов
-}
+// Создаём файлы, если они отсутствуют
+if (!fs.existsSync(ordersPath)) fs.writeFileSync(ordersPath, "[]");
+if (!fs.existsSync(usersPath)) fs.writeFileSync(usersPath, "[]");
+if (!fs.existsSync(adminMessagesPath)) fs.writeFileSync(adminMessagesPath, "[]");
 
 // Хранилище для временно удаленных заказов
 const pendingDeletions = new Map();
@@ -29,6 +30,8 @@ const pendingDeletions = new Map();
 app.get("/orders", (req, res) => {
 	try {
 		const orders = JSON.parse(fs.readFileSync(ordersPath, "utf-8"));
+		// Сортировка по времени (новые сверху)
+		orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 		res.json(orders);
 	} catch (error) {
 		console.error("Ошибка при чтении orders.json:", error);
@@ -36,13 +39,14 @@ app.get("/orders", (req, res) => {
 	}
 });
 
+
 // Удаление заказа с возможностью восстановления
 app.post("/orders/delete", (req, res) => {
 	const { orderId } = req.body;
 
 	try {
 		let orders = JSON.parse(fs.readFileSync(ordersPath, "utf-8"));
-		const orderIndex = orders.findIndex(o => o.userId.toString() === orderId.toString());
+		const orderIndex = orders.findIndex((o) => o.userId.toString() === orderId.toString());
 
 		if (orderIndex !== -1) {
 			const [deletedOrder] = orders.splice(orderIndex, 1);
@@ -99,7 +103,7 @@ app.post("/orders/save-note", (req, res) => {
 
 	try {
 		let orders = JSON.parse(fs.readFileSync(ordersPath, "utf-8"));
-		const orderIndex = orders.findIndex(o => o.userId.toString() === orderId.toString());
+		const orderIndex = orders.findIndex((o) => o.userId.toString() === orderId.toString());
 
 		if (orderIndex !== -1) {
 			orders[orderIndex].note = note;
@@ -120,7 +124,7 @@ app.post("/orders/update-status", (req, res) => {
 
 	try {
 		let orders = JSON.parse(fs.readFileSync(ordersPath, "utf-8"));
-		const orderIndex = orders.findIndex(o => o.userId.toString() === orderId.toString());
+		const orderIndex = orders.findIndex((o) => o.userId.toString() === orderId.toString());
 
 		if (orderIndex !== -1) {
 			orders[orderIndex].status = status;
@@ -138,13 +142,12 @@ app.post("/orders/update-status", (req, res) => {
 // Получение всех пользователей
 app.get("/users", (req, res) => {
 	try {
-		const users = Array.from(allUsers.entries()).map(([userId, userData]) => ({
-			userId,
-			...userData,
-		}));
+		const users = JSON.parse(fs.readFileSync(usersPath, "utf-8"));
+		// Сортировка по времени (новые сверху)
+		users.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 		res.json(users);
 	} catch (error) {
-		console.error("Ошибка при чтении данных пользователей:", error);
+		console.error("Ошибка при чтении users.json:", error);
 		res.status(500).json({ success: false, message: "Ошибка при загрузке данных пользователей" });
 	}
 });
@@ -152,9 +155,12 @@ app.get("/users", (req, res) => {
 // Получение всех сообщений администратору
 app.get("/admin-messages", (req, res) => {
 	try {
-		res.json(adminMessages);
+		const messages = JSON.parse(fs.readFileSync(adminMessagesPath, "utf-8"));
+		// Сортировка по времени (новые сверху)
+		messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+		res.json(messages);
 	} catch (error) {
-		console.error("Ошибка при чтении сообщений администратору:", error);
+		console.error("Ошибка при чтении adminMessages.json:", error);
 		res.status(500).json({ success: false, message: "Ошибка при загрузке сообщений администратору" });
 	}
 });

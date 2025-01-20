@@ -118,6 +118,20 @@ function addMessageToDelete(userId, messageId) {
 	userState.previousMessages.push(messageId);
 }
 
+// Функция для чтения данных из JSON-файла
+function readJsonFile(filePath) {
+	if (!fs.existsSync(filePath)) {
+		fs.writeFileSync(filePath, "[]");
+	}
+	const data = fs.readFileSync(filePath, "utf-8");
+	return JSON.parse(data);
+}
+
+// Функция для записи данных в JSON-файл
+function writeJsonFile(filePath, data) {
+	fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
 // Обработка команды /start
 bot.command("start", async (ctx) => {
 	const userId = ctx.from.id;
@@ -126,7 +140,8 @@ bot.command("start", async (ctx) => {
 	const lastName = ctx.from.last_name || "Нет фамилии";
 
 	// Сохраняем информацию о пользователе
-	allUsers.set(userId, {
+	const userData = {
+		userId,
 		username,
 		firstName,
 		lastName,
@@ -137,9 +152,19 @@ bot.command("start", async (ctx) => {
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
-			timeZone: "Europe/Moscow"
+			timeZone: "Europe/Moscow",
 		}),
-	});
+	};
+
+	// Чтение текущих данных из users.json
+	const users = readJsonFile("users.json");
+
+	// Проверяем, есть ли пользователь в файле
+	const userExists = users.some((user) => user.userId === userId);
+	if (!userExists) {
+		users.push(userData);
+		writeJsonFile("users.json", users);
+	}
 
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
@@ -385,16 +410,19 @@ bot.callbackQuery("back_to_main_menu", async (ctx) => {
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
 
-	const sentMessage = await ctx.reply("🏠 Главное меню\n\n" +
+	const sentMessage = await ctx.reply(
+		"🏠 Главное меню\n\n" +
 		"Добро пожаловать в бот магазина Secret Code!\n\n" +
 		"Рады видеть тебя здесь! С помощью этого бота ты сможешь:\n" +
 		"✅ Рассчитать стоимость заказа.\n" +
 		"✅ Оформить заказ.\n" +
 		"✅ Связаться с администратором.\n\n" +
 		"Если хочешь узнать больше, нажми «Инструкции».\n\n" +
-		"Выбери действие:", {
-		reply_markup: mainMenuKeyboard,
-	});
+		"Выбери действие:",
+		{
+			reply_markup: mainMenuKeyboard,
+		}
+	);
 
 	// Сохраняем ID сообщения для удаления
 	addMessageToDelete(userId, sentMessage.message_id);
@@ -469,7 +497,7 @@ bot.on("message", async (ctx) => {
 				hour: "2-digit",
 				minute: "2-digit",
 				second: "2-digit",
-				timeZone: "Europe/Moscow"
+				timeZone: "Europe/Moscow",
 			}),
 		};
 		allUsers.set(userId, userData); // Используем set вместо add
@@ -482,7 +510,8 @@ bot.on("message", async (ctx) => {
 			const firstName = ctx.from.first_name || "Нет имени";
 			const lastName = ctx.from.last_name || "Нет фамилии";
 
-			adminMessages.push({
+			// Сохраняем сообщение в adminMessages.json
+			const messageData = {
 				userId,
 				username,
 				firstName,
@@ -495,9 +524,14 @@ bot.on("message", async (ctx) => {
 					hour: "2-digit",
 					minute: "2-digit",
 					second: "2-digit",
-					timeZone: "Europe/Moscow"
+					timeZone: "Europe/Moscow",
 				}),
-			});
+			};
+
+			const messages = readJsonFile("adminMessages.json");
+			messages.push(messageData);
+			writeJsonFile("adminMessages.json", messages);
+
 			// Формируем сообщение для администратора
 			let adminMessage = `Новое сообщение от пользователя:\n\n` +
 				`ID пользователя: <code>${userId}</code>\n` +
@@ -758,9 +792,8 @@ function saveOrderToFile(userId, category, price, finalPrice, productLink, size,
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
-			timeZone: "Europe/Moscow"
+			timeZone: "Europe/Moscow",
 		}),
-
 	};
 
 	const ordersPath = path.resolve("orders.json");
@@ -777,6 +810,7 @@ function saveOrderToFile(userId, category, price, finalPrice, productLink, size,
 	// Сохранение обновленного списка заказов
 	fs.writeFileSync(ordersPath, JSON.stringify(orders, null, 2));
 }
+
 // Обработка ошибок
 bot.catch((err) => {
 	console.error("Ошибка в боте:", err);
@@ -784,5 +818,6 @@ bot.catch((err) => {
 
 // Экспорт переменных для использования в server.js
 export { allUsers, adminMessages };
+
 // Запуск бота
 bot.start();
