@@ -24,7 +24,7 @@ const categories = {
 	winter_shoes: { name: "Зимняя обувь", markup: 3300 },
 	hoodie: { name: "Худи", markup: 3000 },
 	winter_jacket: { name: "Зимняя куртка", markup: 3500 },
-	windbreaker: { name: "Ветровка", markup: 2900 },
+	windbreaker: { name: "Ветровка", markup: 3000 },
 };
 
 // Инлайн-клавиатура для связи с администратором
@@ -365,7 +365,7 @@ bot.callbackQuery(/^category_/, async (ctx) => {
 
 	// Отправляем сообщение с запросом цены
 	const sentMessage = await ctx.replyWithAnimation(
-		"https://rawcdn.githack.com/guijaffe/strtcode_bot/c7577aeb06e13db1adfb8c7599856fc05a4fb2cf/mp4/price.mp4",
+		"https://rawcdn.githack.com/guijaffe/strtcode_bot/86279142c4ea0ee4df17571bec01e9ea2a8464ce/mp4/price.mp4",
 		{
 			caption: "Введите цену товара в юанях:",
 		}
