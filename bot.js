@@ -20,11 +20,11 @@ const adminMessages = [];
 
 // Категории товаров и их наценки (комиссии)
 const categories = {
-	sneakers: { name: "Кроссовки", markup: 2000 },
-	winter_shoes: { name: "Зимняя обувь", markup: 2300 },
-	hoodie: { name: "Худи", markup: 2000 },
-	winter_jacket: { name: "Зимняя куртка", markup: 2500 },
-	windbreaker: { name: "Ветровка", markup: 1900 },
+	sneakers: { name: "Кроссовки", markup: 3000 },
+	winter_shoes: { name: "Зимняя обувь", markup: 3300 },
+	hoodie: { name: "Худи", markup: 3000 },
+	winter_jacket: { name: "Зимняя куртка", markup: 3500 },
+	windbreaker: { name: "Ветровка", markup: 2900 },
 };
 
 // Инлайн-клавиатура для связи с администратором
