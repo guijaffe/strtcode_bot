@@ -132,7 +132,6 @@ function writeJsonFile(filePath, data) {
 	fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
-// Обработка команды /start
 bot.command("start", async (ctx) => {
 	const userId = ctx.from.id;
 	const username = ctx.from.username || "Нет юзернейма";
@@ -165,6 +164,9 @@ bot.command("start", async (ctx) => {
 		users.push(userData);
 		writeJsonFile("users.json", users);
 	}
+
+	// Обновляем allUsers
+	allUsers.set(userId, userData);
 
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
@@ -209,16 +211,19 @@ bot.command("broadcast", async (ctx) => {
 	let successCount = 0;
 	let failCount = 0;
 
+	// Чтение пользователей из users.json
+	const users = readJsonFile("users.json");
+
 	// Рассылка всем пользователям
-	for (const [userId, userData] of allUsers) {
+	for (const user of users) {
 		try {
 			await ctx.api.sendMessage(
-				userId, // Передаем только userId
+				user.userId, // Передаем userId
 				`${messageText}`
 			);
 			successCount++;
 		} catch (error) {
-			console.error(`Не удалось отправить сообщение пользователю ${userId}:`, error);
+			console.error(`Не удалось отправить сообщение пользователю ${user.userId}:`, error);
 			failCount++;
 		}
 	}
