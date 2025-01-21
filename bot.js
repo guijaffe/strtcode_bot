@@ -18,13 +18,49 @@ const allUsers = new Map();
 // Хранение сообщений пользователей администратору
 const adminMessages = [];
 
-// Категории товаров и их наценки (комиссии)
+bot.command("removekeyboard", async (ctx) => {
+	const userId = ctx.from.id.toString();
+
+	// Проверка на администратора
+	if (userId !== adminChatId) {
+		await ctx.reply("❌ У вас нет прав для этой команды.");
+		return;
+	}
+
+	// Чтение пользователей из users.json
+	const users = readJsonFile("users.json");
+
+	let successCount = 0;
+	let failCount = 0;
+
+	// Рассылка команды удаления клавиатуры всем пользователям
+	for (const user of users) {
+		try {
+			await ctx.api.sendMessage(user.userId, "Удаляем клавиатуру...", {
+				reply_markup: { remove_keyboard: true }, // Удаляем клавиатуру
+			});
+			successCount++;
+		} catch (error) {
+			console.error(`Не удалось удалить клавиатуру у пользователя ${user.userId}:`, error);
+			failCount++;
+		}
+	}
+
+	await ctx.reply(
+		`✅ Клавиатура удалена у пользователей.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
+	);
+});
+
 const categories = {
 	sneakers: { name: "Кроссовки", markup: 3000 },
 	winter_shoes: { name: "Зимняя обувь", markup: 3300 },
-	hoodie: { name: "Худи", markup: 3000 },
+	t_shirts: { name: "Футболка", markup: 2800 },
+	windbreaker: { name: "Ветровка, бомбер", markup: 3000 },
+	hoodie: { name: "Худи, свитер, кофта", markup: 3000 },
+	jacket: { name: "Куртка ", markup: 3000 },
 	winter_jacket: { name: "Зимняя куртка", markup: 3500 },
-	windbreaker: { name: "Ветровка", markup: 3000 },
+	coat: { name: "Пальто", markup: 3100 },
+	accessories: { name: "Аксессуары", markup: 2900 },
 };
 
 // Инлайн-клавиатура для связи с администратором
@@ -47,11 +83,19 @@ const categoryKeyboard = new InlineKeyboard()
 	.row()
 	.text("Зимняя обувь", "category_winter_shoes")
 	.row()
-	.text("Худи", "category_hoodie")
+	.text("Футболки", "category_t_shirts")
+	.row()
+	.text("Худи, свитер, кофта", "category_hoodie")
+	.row()
+	.text("Ветровка, бомбер", "category_windbreaker")
+	.row()
+	.text("Куртка", "category_jacket")
 	.row()
 	.text("Зимняя куртка", "category_winter_jacket")
 	.row()
-	.text("Ветровка", "category_windbreaker")
+	.text("Пальто", "category_coat")
+	.row()
+	.text("Аксессуары", "category_accessories")
 	.row()
 	.text("Вернуться в главное меню", "back_to_main_menu");
 
@@ -189,7 +233,6 @@ bot.command("start", async (ctx) => {
 	addMessageToDelete(userId, sentMessage.message_id);
 });
 
-// Команда /broadcast
 bot.command("broadcast", async (ctx) => {
 	const userId = ctx.from.id.toString();
 
@@ -199,38 +242,122 @@ bot.command("broadcast", async (ctx) => {
 		return;
 	}
 
-	const messageText = ctx.message.text.split(" ").slice(1).join(" ");
+	// Проверяем, есть ли медиафайл (фото, документ или альбом)
+	const hasPhoto = ctx.message.photo;
+	const hasDocument = ctx.message.document;
+	const hasMediaGroup = ctx.message.media_group;
 
-	if (!messageText) {
-		await ctx.reply(
-			"⚠️ Пожалуйста, введите текст для рассылки.\nПример: /broadcast Новые товары уже в продаже!"
-		);
-		return;
-	}
+	// Если есть медиафайл, обрабатываем его
+	if (hasPhoto || hasDocument || hasMediaGroup) {
+		let mediaFileId, mediaType;
 
-	let successCount = 0;
-	let failCount = 0;
-
-	// Чтение пользователей из users.json
-	const users = readJsonFile("users.json");
-
-	// Рассылка всем пользователям
-	for (const user of users) {
-		try {
-			await ctx.api.sendMessage(
-				user.userId, // Передаем userId
-				`${messageText}`
-			);
-			successCount++;
-		} catch (error) {
-			console.error(`Не удалось отправить сообщение пользователю ${user.userId}:`, error);
-			failCount++;
+		if (hasPhoto) {
+			mediaType = "photo";
+			mediaFileId = ctx.message.photo[ctx.message.photo.length - 1].file_id; // Берем самое большое фото
+		} else if (hasDocument) {
+			mediaType = "document";
+			mediaFileId = ctx.message.document.file_id;
+		} else if (hasMediaGroup) {
+			// Если это альбом, обрабатываем только первый элемент
+			const mediaGroup = ctx.message.media_group;
+			if (mediaGroup.length > 0) {
+				const firstMedia = mediaGroup[0];
+				if (firstMedia.photo) {
+					mediaType = "photo";
+					mediaFileId = firstMedia.photo[firstMedia.photo.length - 1].file_id;
+				} else if (firstMedia.document) {
+					mediaType = "document";
+					mediaFileId = firstMedia.document.file_id;
+				}
+			}
 		}
-	}
 
-	await ctx.reply(
-		`✅ Рассылка завершена.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
-	);
+		const caption = ctx.message.caption || ""; // Текст под фото (если есть)
+
+		// Чтение пользователей из users.json
+		const users = readJsonFile("users.json");
+
+		let successCount = 0;
+		let failCount = 0;
+
+		// Рассылка медиафайла всем пользователям
+		for (const user of users) {
+			try {
+				if (mediaType === "photo") {
+					await ctx.api.sendPhoto(user.userId, mediaFileId, {
+						caption: caption, // Текст под фото
+					});
+				} else if (mediaType === "document") {
+					await ctx.api.sendDocument(user.userId, mediaFileId, {
+						caption: caption, // Текст под документом
+					});
+				}
+				successCount++;
+			} catch (error) {
+				console.error(`Не удалось отправить медиафайл пользователю ${user.userId}:`, error);
+				failCount++;
+			}
+		}
+
+		await ctx.reply(
+			`✅ Рассылка медиафайла завершена.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
+		);
+	} else if (ctx.message.sticker) {
+		// Если это стикер, обрабатываем его отдельно
+		const stickerFileId = ctx.message.sticker.file_id;
+
+		// Чтение пользователей из users.json
+		const users = readJsonFile("users.json");
+
+		let successCount = 0;
+		let failCount = 0;
+
+		// Рассылка стикера всем пользователям
+		for (const user of users) {
+			try {
+				await ctx.api.sendSticker(user.userId, stickerFileId);
+				successCount++;
+			} catch (error) {
+				console.error(`Не удалось отправить стикер пользователю ${user.userId}:`, error);
+				failCount++;
+			}
+		}
+
+		await ctx.reply(
+			`✅ Рассылка стикера завершена.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
+		);
+	} else {
+		// Если нет медиафайла, обрабатываем текстовое сообщение
+		const messageText = ctx.message.text.split(" ").slice(1).join(" ");
+
+		if (!messageText) {
+			await ctx.reply(
+				"⚠️ Пожалуйста, введите текст для рассылки.\nПример: /broadcast Новые товары уже в продаже!"
+			);
+			return;
+		}
+
+		let successCount = 0;
+		let failCount = 0;
+
+		// Чтение пользователей из users.json
+		const users = readJsonFile("users.json");
+
+		// Рассылка текстового сообщения всем пользователям
+		for (const user of users) {
+			try {
+				await ctx.api.sendMessage(user.userId, `${messageText}`);
+				successCount++;
+			} catch (error) {
+				console.error(`Не удалось отправить сообщение пользователю ${user.userId}:`, error);
+				failCount++;
+			}
+		}
+
+		await ctx.reply(
+			`✅ Рассылка завершена.\n✔️ Успешно: ${successCount}\n❌ Ошибки: ${failCount}`
+		);
+	}
 });
 
 // Показ меню инструкций
