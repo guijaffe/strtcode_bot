@@ -572,12 +572,12 @@ async function showFAQ(ctx) {
 	addMessageToDelete(userId, sentMessage.message_id);
 }
 
-// // Обработка нажатия инлайн-кнопки "F.A.Q."
-// bot.callbackQuery("show_faq", async (ctx) => {
-// 	await showFAQ(ctx);
-// 	await ctx.answerCallbackQuery();
-// });
-//
+// Обработка нажатия инлайн-кнопки "F.A.Q."
+bot.callbackQuery("show_faq", async (ctx) => {
+	await showFAQ(ctx);
+	await ctx.answerCallbackQuery();
+});
+
 // // Показ отзывов
 // async function showReviews(ctx) {
 // 	const userId = ctx.from.id;
