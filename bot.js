@@ -75,6 +75,10 @@ const mainMenuKeyboard = new InlineKeyboard()
 	.row()
 	.text("Инструкции", "show_instructions")
 	.row()
+	.text("F.A.Q.", "show_faq")
+	.row()
+	// .text("Отзывы", "show_reviews")
+	// .row()
 	.text("Связаться с администратором", "contact_admin");
 
 // Инлайн-клавиатура для выбора категории
@@ -128,13 +132,13 @@ const instructionsMenuKeyboard = new InlineKeyboard()
 
 // Инлайн-клавиатура для инструкции по боту (без кнопки "Инструкция по использованию бота")
 const botInstructionsKeyboard = new InlineKeyboard()
-	.text("Инструкция по использованию Poizon", "poizon_instructions")
+	.text("Назад", "show_instructions")
 	.row()
 	.text("На главную", "back_to_main_menu");
 
 // Инлайн-клавиатура для инструкции по Poizon (без кнопки "Инструкция по использованию Poizon")
 const poizonInstructionsKeyboard = new InlineKeyboard()
-	.text("Инструкция по использованию бота", "bot_instructions")
+	.text("Назад", "show_instructions")
 	.row()
 	.text("На главную", "back_to_main_menu");
 
@@ -406,7 +410,7 @@ async function showBotInstructions(ctx) {
 	await deletePreviousMessages(ctx, userId);
 
 	const botInstructions = `
-📖 **Инструкция по использованию бота**:
+📖 Инструкция по использованию бота:
 
 1. **Рассчитать стоимость заказа**:
    - Нажмите кнопку "Рассчитать заказ".
@@ -500,6 +504,8 @@ bot.callbackQuery("registration_instructions", async (ctx) => {
 		const sentMessage = await ctx.replyWithVideo(videoUrl, {
 			caption: "📖 Регистрация в приложении:\n\nПосмотрите видеоинструкцию по регистрации в приложении.",
 			reply_markup: new InlineKeyboard()
+				.text("Назад", "show_instructions")
+				.row()
 				.text("На главную", "back_to_main_menu"),
 		});
 
@@ -521,13 +527,15 @@ bot.callbackQuery("service_instructions", async (ctx) => {
 	await deletePreviousMessages(ctx, userId);
 
 	// Отправляем видео
-	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/5f5e4ed3f932128851026154898be2d82e4eaa08/mp4/lessons/urok.mp4";
+	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/8e718b0d4779e843837c5a6509e6ccd17d919292/mp4/lessons/urok2.mp4";
 
 	try {
 		// Отправляем видео
 		const sentMessage = await ctx.replyWithVideo(videoUrl, {
-			caption: "📖 Регистрация в приложении:\n\nПосмотрите видеоинструкцию по регистрации в приложении.",
+			caption: "📖 Как пользоваться нашим сервисом:\n\nПосмотрите видеоинструкцию по использованию Poizon и Street Code.",
 			reply_markup: new InlineKeyboard()
+				.text("Назад", "show_instructions")
+				.row()
 				.text("На главную", "back_to_main_menu"),
 		});
 
@@ -540,6 +548,75 @@ bot.callbackQuery("service_instructions", async (ctx) => {
 
 	await ctx.answerCallbackQuery();
 });
+
+// Показ F.A.Q.
+async function showFAQ(ctx) {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const faqText = `
+❓ По это ссылке собраны все самые частые вопросы, а так же все видео с инструкциями по пользованию и регистрации в приложении.
+
+[F.A.Q. (Часто задаваемые вопросы)](https://telegra.ph/FAQ---CHasto-zadavaemye-voprosy-01-15-3)
+`;
+
+	const sentMessage = await ctx.reply(faqText, {
+		reply_markup: new InlineKeyboard()
+			.text("На главную", "back_to_main_menu"),
+		parse_mode: "Markdown", // Включаем Markdown для форматирования
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+}
+
+// // Обработка нажатия инлайн-кнопки "F.A.Q."
+// bot.callbackQuery("show_faq", async (ctx) => {
+// 	await showFAQ(ctx);
+// 	await ctx.answerCallbackQuery();
+// });
+//
+// // Показ отзывов
+// async function showReviews(ctx) {
+// 	const userId = ctx.from.id;
+//
+// 	// Удаляем предыдущие сообщения
+// 	await deletePreviousMessages(ctx, userId);
+//
+// 	const reviewsText = `
+// ⭐ **Отзывы наших клиентов**
+//
+// 1. **Алексей**:
+//    - "Отличный сервис! Быстро оформили заказ, все пришло в срок. Рекомендую!"
+//
+// 2. **Мария**:
+//    - "Очень удобный бот. Все понятно и просто. Спасибо за качественный сервис!"
+//
+// 3. **Иван**:
+//    - "Заказывал кроссовки, все пришло как на фото. Буду обращаться еще!"
+//
+// ---
+//
+// Если у вас есть отзыв, напишите его администратору через кнопку "Связаться с администратором".
+// `;
+//
+// 	const sentMessage = await ctx.reply(reviewsText, {
+// 		reply_markup: new InlineKeyboard()
+// 			.text("На главную", "back_to_main_menu"),
+// 		parse_mode: "Markdown", // Включаем Markdown для форматирования
+// 	});
+//
+// 	// Сохраняем ID сообщения для удаления
+// 	addMessageToDelete(userId, sentMessage.message_id);
+// }
+//
+// // Обработка нажатия инлайн-кнопки "Отзывы"
+// bot.callbackQuery("show_reviews", async (ctx) => {
+// 	await showReviews(ctx);
+// 	await ctx.answerCallbackQuery();
+// });
 
 // Показ выбора категории
 async function showCategorySelection(ctx) {
