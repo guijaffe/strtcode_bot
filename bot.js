@@ -113,14 +113,6 @@ const confirmOrderKeyboard = new InlineKeyboard()
 	.row()
 	.text("Вернуться в главное меню", "back_to_main_menu");
 
-// Инлайн-клавиатура для выбора инструкций
-const instructionsMenuKeyboard = new InlineKeyboard()
-	.text("Инструкция по использованию бота", "bot_instructions")
-	.row()
-	.text("Инструкция по использованию Poizon", "poizon_instructions")
-	.row()
-	.text("На главную", "back_to_main_menu");
-
 
 // Инлайн-клавиатура для выбора инструкций
 const instructionsMenuKeyboard = new InlineKeyboard()
@@ -458,12 +450,12 @@ async function showPoizonInstructions(ctx) {
 	await deletePreviousMessages(ctx, userId);
 
 	const poizonInstructions = `
-📖 **Инструкция по использованию приложения Poizon**:
+📖 Инструкция по использованию приложения Poizon:
 
 Для того чтобы научиться пользоваться приложением Poizon, перейдите по ссылке:
 👉 [Как пользоваться приложением Poizon](https://telegra.ph/Kak-polzovatsya-prilozheniem-Poizon-01-14)
 
-Там вы найдете подробное руководство по поиску товаров, оформлению заказов и другим функциям приложения.
+Там вы найдете подробное руководство с видеоинструкцией по поиску товаров, оформлению заказов и другим функциям приложения.
 `;
 
 	const sentMessage = await ctx.reply(poizonInstructions, {
@@ -500,49 +492,51 @@ bot.callbackQuery("registration_instructions", async (ctx) => {
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
 
-	const registrationInstructions = `
-📖 **Регистрация в приложении**:
+	// Отправляем видео
+	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/5f5e4ed3f932128851026154898be2d82e4eaa08/mp4/lessons/reg.mp4";
 
-Здесь будет видео с инструкцией по регистрации в приложении.
-`;
+	try {
+		// Отправляем видео
+		const sentMessage = await ctx.replyWithVideo(videoUrl, {
+			caption: "📖 Регистрация в приложении:\n\nПосмотрите видеоинструкцию по регистрации в приложении.",
+			reply_markup: new InlineKeyboard()
+				.text("На главную", "back_to_main_menu"),
+		});
 
-	const sentMessage = await ctx.reply(registrationInstructions, {
-		reply_markup: new InlineKeyboard()
-			.text("Как пользоваться сервисом", "service_instructions")
-			.row()
-			.text("На главную", "back_to_main_menu"),
-		parse_mode: "Markdown", // Включаем Markdown для форматирования
-	});
-
-	// Сохраняем ID сообщения для удаления
-	addMessageToDelete(userId, sentMessage.message_id);
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, sentMessage.message_id);
+	} catch (error) {
+		console.error("Ошибка при отправке видео:", error);
+		await ctx.reply("Не удалось загрузить видео. Пожалуйста, попробуйте позже.");
+	}
 
 	await ctx.answerCallbackQuery();
 });
 
-// Обработка нажатия инлайн-кнопки "Как пользоваться сервисом"
+// Обработка нажатия инлайн-кнопки "Регистрация в приложении"
 bot.callbackQuery("service_instructions", async (ctx) => {
 	const userId = ctx.from.id;
 
 	// Удаляем предыдущие сообщения
 	await deletePreviousMessages(ctx, userId);
 
-	const serviceInstructions = `
-📖 **Как пользоваться сервисом**:
+	// Отправляем видео
+	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/5f5e4ed3f932128851026154898be2d82e4eaa08/mp4/lessons/urok.mp4";
 
-Здесь будет видео с инструкцией по использованию сервиса.
-`;
+	try {
+		// Отправляем видео
+		const sentMessage = await ctx.replyWithVideo(videoUrl, {
+			caption: "📖 Регистрация в приложении:\n\nПосмотрите видеоинструкцию по регистрации в приложении.",
+			reply_markup: new InlineKeyboard()
+				.text("На главную", "back_to_main_menu"),
+		});
 
-	const sentMessage = await ctx.reply(serviceInstructions, {
-		reply_markup: new InlineKeyboard()
-			.text("Регистрация в приложении", "registration_instructions")
-			.row()
-			.text("На главную", "back_to_main_menu"),
-		parse_mode: "Markdown", // Включаем Markdown для форматирования
-	});
-
-	// Сохраняем ID сообщения для удаления
-	addMessageToDelete(userId, sentMessage.message_id);
+		// Сохраняем ID сообщения для удаления
+		addMessageToDelete(userId, sentMessage.message_id);
+	} catch (error) {
+		console.error("Ошибка при отправке видео:", error);
+		await ctx.reply("Не удалось загрузить видео. Пожалуйста, попробуйте позже.");
+	}
 
 	await ctx.answerCallbackQuery();
 });
