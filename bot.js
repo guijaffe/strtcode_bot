@@ -121,6 +121,19 @@ const instructionsMenuKeyboard = new InlineKeyboard()
 	.row()
 	.text("На главную", "back_to_main_menu");
 
+
+// Инлайн-клавиатура для выбора инструкций
+const instructionsMenuKeyboard = new InlineKeyboard()
+	.text("Регистрация в приложении Poizon", "registration_instructions")
+	.row()
+	.text("Инструкция по использованию Poizon", "poizon_instructions")
+	.row()
+	.text("Как пользоваться сервисом", "service_instructions")
+	.row()
+	.text("Инструкция по использованию бота", "bot_instructions")
+	.row()
+	.text("На главную", "back_to_main_menu");
+
 // Инлайн-клавиатура для инструкции по боту (без кнопки "Инструкция по использованию бота")
 const botInstructionsKeyboard = new InlineKeyboard()
 	.text("Инструкция по использованию Poizon", "poizon_instructions")
@@ -370,11 +383,18 @@ async function showInstructionsMenu(ctx) {
 	const instructionsMenu = `
 📖 Выберите инструкцию:
 
-1. **Инструкция по использованию бота**:
-   - Как пользоваться ботом для расчета и оформления заказов.
+1. **Регистрация в приложении**:
+   - Видеоинструкция по регистрации в приложении.
 
 2. **Инструкция по использованию Poizon**:
    - Как пользоваться приложением Poizon для поиска товаров.
+
+3. **Как пользоваться сервисом**:
+   - Видеоинструкция по использованию сервиса.
+
+4. **Инструкция по использованию бота**:
+   - Как пользоваться ботом для расчета и оформления заказов.
+   
 `;
 
 	const sentMessage = await ctx.reply(instructionsMenu, {
@@ -470,6 +490,60 @@ bot.callbackQuery("bot_instructions", async (ctx) => {
 // Обработка нажатия инлайн-кнопки "Инструкция по использованию Poizon"
 bot.callbackQuery("poizon_instructions", async (ctx) => {
 	await showPoizonInstructions(ctx);
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Регистрация в приложении"
+bot.callbackQuery("registration_instructions", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const registrationInstructions = `
+📖 **Регистрация в приложении**:
+
+Здесь будет видео с инструкцией по регистрации в приложении.
+`;
+
+	const sentMessage = await ctx.reply(registrationInstructions, {
+		reply_markup: new InlineKeyboard()
+			.text("Как пользоваться сервисом", "service_instructions")
+			.row()
+			.text("На главную", "back_to_main_menu"),
+		parse_mode: "Markdown", // Включаем Markdown для форматирования
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
+	await ctx.answerCallbackQuery();
+});
+
+// Обработка нажатия инлайн-кнопки "Как пользоваться сервисом"
+bot.callbackQuery("service_instructions", async (ctx) => {
+	const userId = ctx.from.id;
+
+	// Удаляем предыдущие сообщения
+	await deletePreviousMessages(ctx, userId);
+
+	const serviceInstructions = `
+📖 **Как пользоваться сервисом**:
+
+Здесь будет видео с инструкцией по использованию сервиса.
+`;
+
+	const sentMessage = await ctx.reply(serviceInstructions, {
+		reply_markup: new InlineKeyboard()
+			.text("Регистрация в приложении", "registration_instructions")
+			.row()
+			.text("На главную", "back_to_main_menu"),
+		parse_mode: "Markdown", // Включаем Markdown для форматирования
+	});
+
+	// Сохраняем ID сообщения для удаления
+	addMessageToDelete(userId, sentMessage.message_id);
+
 	await ctx.answerCallbackQuery();
 });
 
