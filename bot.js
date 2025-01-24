@@ -497,7 +497,7 @@ bot.callbackQuery("registration_instructions", async (ctx) => {
 	await deletePreviousMessages(ctx, userId);
 
 	// Отправляем видео
-	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/5f5e4ed3f932128851026154898be2d82e4eaa08/mp4/lessons/reg.mp4";
+	const videoUrl = "https://rawcdn.githack.com/guijaffe/strtcode_bot/fa848d03c5570d742e8d87c75327ee9b78c77f4c/mp4/lessons/reg.mp4";
 
 	try {
 		// Отправляем видео
